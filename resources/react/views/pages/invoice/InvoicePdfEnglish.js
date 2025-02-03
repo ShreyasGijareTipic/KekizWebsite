@@ -10,110 +10,87 @@ export function generatePDF(grandTotal, invoiceNo, customerName, formData, remai
         return;
     }
 
-    // Invoice HTML structure
     const invoiceContent = `
-        <div style="font-family: Arial, sans-serif; line-height: 1.6; padding: 20px; border: 1px solid #ddd; background-color: #f9f9f9;">
-            <!-- Header Section -->
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                <div style="width: 40%;">
+        <div style="font-family: Arial, sans-serif; padding: 20px; background-color: #fff; border: 1px solid #ddd;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div>
                     <img src="img/${ci.logo}" alt="Company Logo" style="width: 100px;" />
                 </div>
-                <div style="text-align: right; width: 60%;">
-                    <h2 style="margin: 0; font-size: 16px;">${ci.company_name}</h2>
-                    <p style="margin: 5px 0; font-size: 14px;">${ci.land_mark}, ${ci.Tal}, ${ci.Dist}, ${ci.pincode}</p>
-                    <p style="margin: 5px 0; font-size: 14px;">Phone: ${ci.phone_no}</p>
+                <div style="text-align: right;">
+                    <h2>${ci.company_name}</h2>
+                    <p>${ci.land_mark}, ${ci.Tal}, ${ci.Dist}, ${ci.pincode}</p>
+                    <p>Phone: ${ci.phone_no}</p>
                 </div>
             </div>
 
-            <!-- Status Section -->
-            <div style="text-align: center; margin-bottom: 20px;">
-                <h3 style="background-color: #d1e7dd; padding: 10px; border: 1px solid #b2d8cc; margin: 0; font-size: 16px;">${formData.InvoiceStatus}</h3>
-            </div>
+            <h3 style="text-align: center; background-color: #d1e7dd; padding: 10px; border: 1px solid #b2d8cc;">${formData.InvoiceStatus}</h3>
 
-            <!-- Customer and Invoice Details -->
-            <div style="display: flex; justify-content: space-between; margin-bottom: 20px;">
-                <div style="width: 48%; padding: 10px; background-color: #f0f8ff; border: 1px solid #add8e6;">
-                    <p style="font-size: 16px;"><strong>Customer Name:</strong> <span style="font-size: 14px;">${formData.customer.name}</span></p>
-                    <p style="font-size: 16px;"><strong>Customer Address:</strong> <span style="font-size: 14px;">${formData.customer.address}</span></p>
-                    <p style="font-size: 16px;"><strong>Mobile Number:</strong> <span style="font-size: 14px;">${formData.customer.mobile}</span></p>
+            <div style="display: flex; justify-content: space-between; margin-top: 20px;">
+                <div style="width: 48%; background: #f0f8ff; padding: 10px;">
+                    <p><strong>Customer Name:</strong> ${formData.customer.name}</p>
+                    <p><strong>Mobile Number:</strong> ${formData.customer.mobile}</p>
                 </div>
-                <div style="width: 48%; padding: 10px; background-color: #fff7e6; border: 1px solid #ffcc99;">
-                    <p style="font-size: 16px;"><strong>Invoice Number:</strong> <span style="font-size: 14px;">${invoiceNo}</span></p>
-                    <p style="font-size: 16px;"><strong>Invoice Date:</strong> <span style="font-size: 14px;">${formData.date.split("-").reverse().join("-")}</span></p>
-                    ${
-                        formData.InvoiceType === 2
-                            ? `<p style="font-size: 16px;"><strong>Delivery Date:</strong> <span style="font-size: 14px;">${formData.DeliveryDate.split("-").reverse().join("-")}</span></p>`
-                            : ""
-                    }
+                <div style="width: 48%; background: #fff7e6; padding: 10px;">
+                    <p><strong>Invoice Number:</strong> ${invoiceNo}</p>
+                    <p><strong>Invoice Date:</strong> ${formData.date.split("-").reverse().join("-")}</p>
+                    ${formData.InvoiceType === 2 ? `<p><strong>Delivery Date:</strong> ${formData.DeliveryDate.split("-").reverse().join("-")}</p>` : ""}
                 </div>
             </div>
 
-            <!-- Products Table -->
-            <h3 style="font-size: 16px;">Products</h3>
-            <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px; text-align: center;">
+            <h3>Products</h3>
+            <table style="width: 100%; border-collapse: collapse; text-align: center;">
                 <thead>
-                    <tr style="background-color: #f0f0f0;">
-                        <th style="border: 1px solid #ddd; padding: 8px; font-size: 16px;">Sr. No.</th>
-                        <th style="border: 1px solid #ddd; padding: 8px; font-size: 16px;">Product Name</th>
-                        <th style="border: 1px solid #ddd; padding: 8px; font-size: 16px;">Price (₹)</th>
-                        <th style="border: 1px solid #ddd; padding: 8px; font-size: 16px;">Quantity</th>
-                        <th style="border: 1px solid #ddd; padding: 8px; font-size: 16px;">Total (₹)</th>
+                    <tr style="background: #f0f0f0;">
+                        <th>Sr. No.</th>
+                        <th>Product Name</th>
+                        <th>Price (₹)</th>
+                        <th>Quantity</th>
+                        <th>Total (₹)</th>
                     </tr>
                 </thead>
                 <tbody>
-                    ${formData.products
-                        .map((product, index) => `
-                            <tr>
-                                <td style="border: 1px solid #ddd; padding: 8px; font-size: 14px;">${index + 1}</td>
-                                <td style="border: 1px solid #ddd; padding: 8px; font-size: 14px;">${product.product_name}</td>
-                                <td style="border: 1px solid #ddd; padding: 8px; font-size: 14px;">${product.dPrice} /-</td>
-                                <td style="border: 1px solid #ddd; padding: 8px; font-size: 14px;">${product.dQty}</td>
-                                <td style="border: 1px solid #ddd; padding: 8px; font-size: 14px;">${product.total_price} /-</td>
-                            </tr>
-                        `)
-                        .join("")}
-                    <tr style="background-color: #f8f9fa;">
-                        <td colspan="4" style="border: 1px solid #ddd; padding: 8px; text-align: right; font-size: 16px;"><strong>Total</strong></td>
-                        <td style="border: 1px solid #ddd; padding: 8px; font-size: 14px;">${grandTotal} /-</td>
-                    </tr>
+                    ${formData.products.map((product, index) => `
+                        <tr>
+                            <td>${index + 1}</td>
+                            <td>${product.product_name}</td>
+                            <td>${product.dPrice} /-</td>
+                            <td>${product.dQty}</td>
+                            <td>${product.total_price} /-</td>
+                        </tr>
+                    `).join("")}
                 </tbody>
             </table>
 
-            <!-- Additional Details -->
-            <div style="margin-bottom: 20px; padding: 10px; background-color: #e6ffe6; border: 1px solid #ccffcc;">
-                <p style="font-size: 16px;"><strong>Amount Paid:</strong> <span style="font-size: 14px;">${formData.amountPaid.toFixed(2)} /-</span></p>
-                <p style="font-size: 16px;"><strong>Remaining Amount:</strong> <span style="font-size: 14px;">${remainingAmount.toFixed(2)} /-</span></p>
-                <p style="font-size: 16px;"><strong>Payment Mode:</strong> <span style="font-size: 14px;">${formData.paymentMode}</span></p>
+            <div style="margin-top: 20px; padding: 10px; background: #e6ffe6;">
+                <p><strong>Amount Paid:</strong> ${Number(formData.amountPaid).toFixed(2)} /-</p>
+                <p><strong>Remaining Amount:</strong> ${Number(remainingAmount).toFixed(2)} /-</p>
+                <p><strong>Payment Mode:</strong> ${formData.paymentMode}</p>
             </div>
 
-            <p style="font-size: 16px;"><strong>Amount in Words:</strong> <span style="font-size: 14px;">${totalAmountWords} only</span></p>
-
-            <!-- Footer Section -->
             <div style="display: flex; justify-content: space-between; margin-top: 20px;">
-                <div style="width: 48%;">
-                    <h4 style="font-size: 16px;">Bank Details</h4>
-                    <p style="font-size: 14px;"><strong>Bank:</strong> ${ci.bank_name}</p>
-                    <p style="font-size: 14px;"><strong>Account Number:</strong> ${ci.account_no}</p>
-                    <p style="font-size: 14px;"><strong>IFSC Code:</strong> ${ci.IFSC_code}</p>
+                <div>
+                    <h4>Bank Details</h4>
+                    <p><strong>Bank:</strong> ${ci.bank_name}</p>
+                    <p><strong>Account Number:</strong> ${ci.account_no}</p>
+                    <p><strong>IFSC Code:</strong> ${ci.IFSC_code}</p>
                 </div>
-                <div style="text-align: center; width: 48%;">
-                    <p style="font-size: 16px;"><strong>E-Signature</strong></p>
+                <div style="text-align: center;">
+                    <p><strong>E-Signature</strong></p>
                     <img src="img/${ci.sign}" alt="Signature" style="width: 100px; height: 50px;" />
-                    <p style="font-size: 14px;">Authorized Signature</p>
+                    <p>Authorized Signature</p>
                 </div>
             </div>
 
-            <hr style="border: 1px solid #ddd; margin: 20px 0;" />
-            <p style="text-align: center; font-size: 14px;">This invoice is computer-generated and valid.</p>
+            <hr />
+            <p style="text-align: center;">This invoice is computer-generated and valid.</p>
         </div>
     `;
 
-    // Create the element and generate PDF
     const element = document.createElement("div");
     element.innerHTML = invoiceContent;
 
     const options = {
-        margin: [10, 10, 10, 10],
+        margin: 10,
         filename: `${invoiceNo}-${customerName}.pdf`,
         image: { type: "jpeg", quality: 1 },
         html2canvas: { scale: 2 },
@@ -130,7 +107,6 @@ function InvoicePdf() {
                 const formData = {
                     customer: {
                         name: "Shreya G",
-                        address: "Karvenagar",
                         mobile: "1234567890",
                     },
                     date: "2024-12-31",
@@ -143,7 +119,6 @@ function InvoicePdf() {
                     ],
                     amountPaid: 300,
                     paymentMode: "Online",
-                    discount: 10,
                 };
 
                 generatePDF(400, "INV-001", "Shreya G", formData, 100, "Four Hundred");

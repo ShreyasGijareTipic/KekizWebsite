@@ -25,6 +25,8 @@ const InvoiceDetails = () => {
     InvoiceStatus: '',
     finalAmount: 0,
     InvoiceNumber: '',
+    discount:0,
+    balance_amount:0,
     status: '',
     DeliveryDate: '',
     InvoiceType: '',
@@ -71,57 +73,51 @@ const InvoiceDetails = () => {
   const fetchOrder = async () => {
     try {
       const response = await getAPICall('/api/order/' + param.id);
-
-      let paymentModeString = response.paymentType === 0 ? 'Cash' : 'Online (UPI/Bank Transfer)';
-
-      let orderStatusString = '';
-      switch (response.orderStatus) {
-        case 0:
-          orderStatusString = 'Canceled Order';
-          break;
-        case 1:
-          orderStatusString = 'Delivered Order';
-          break;
-        case 2:
-          orderStatusString = 'Order Pending';
-          break;
-        default:
-          orderStatusString = 'Unknown Status';
-          break;
-      }
-
-      let discountValue = response.discount || -1;
-      let finalAmount = Math.round(response.finalAmount);
-      let remaining = finalAmount - response.paidAmount;
-      setRemainingAmount(Math.max(0, remaining));
-
+  
+      // Map order_items into a products array
+      const products = (response.order?.order_items || []).map((item) => ({
+        product_name: item.product?.name || 'N/A', // Fetch product name
+        product_size: item.product_size?.size || 'N/A', // Fetch product size
+        dPrice: item.price || 0, // Product price
+        product_unit: item.product?.unit || '', // Product unit if available
+        dQty: item.qty || 0, // Quantity
+        total_price: item.price * item.qty || 0, // Total price (price x quantity)
+      }));
+  
+      // Update formData with mapped products and other details
       setFormData({
-        customer: response.customer,
-        date: response.invoiceDate,
-        products: response.items,
-        discount: discountValue,
-        amountPaid: response.paidAmount,
-        paymentMode: paymentModeString,
-        InvoiceStatus: orderStatusString,
-        finalAmount: finalAmount,
-        InvoiceNumber: response.id,
-        status: response.orderStatus,
-        DeliveryDate: response.deliveryDate,
-        InvoiceType: response.invoiceType,
+        customer: response.order?.customer || {},
+        date: response.order?.invoiceDate || '',
+        products: products, // Use the mapped products array
+        discount: response.order?.discount || '',
+        amountPaid: response.order?.paid_amount || 0,
+        paymentMode: response.order?.order_type === 0 ? 'Cash' : 'Online (UPI/Bank Transfer)',
+        InvoiceStatus: response.order?.order_status === 1
+          ? 'Delivered Order'
+          : response.order?.order_status === 2
+          ? 'Order Pending'
+          : 'Canceled Order',
+        finalAmount: Math.round(response.order?.total_amount) || 0,
+        balance_amount: response.order?.balance_amount || 0,
+        InvoiceNumber: response.order?.id || '',
+        status: response.order?.order_status || '',
+        DeliveryDate: response.order?.delivery_date || '',
+        
+        InvoiceType: response.order?.order_type || '',
       });
-
-      setGrandTotal(finalAmount);
-      setTotalAmountWords(numberToWords(finalAmount));
     } catch (error) {
-      showToast('danger', 'Error occurred ' + error);
-      console.error('Error fetching product data:', error);
+      showToast('danger', 'Error occurred: ' + error);
+      console.error('Error fetching order data:', error);
     }
   };
-
+  
+  
+  
+  
   useEffect(() => {
     fetchOrder();
-  }, [param.id]);
-
+  }, []); // Fetch order details when component loads
+  
   const handleDownload = (language) => {
     const invoiceNo = formData.InvoiceNumber;
     const isMarathi = language === 'marathi';
@@ -187,7 +183,6 @@ const InvoiceDetails = () => {
               <div className="col-md-6">
                 <h6 style={{ fontWeight: 'bold' }}>Invoice To:</h6>
                 <p style={{ fontWeight: 'bold' }}>Customer Name: <span>{formData.customer?.name}</span></p>
-                <p style={{ fontWeight: 'bold' }}>Customer Address: <span>{formData.customer?.address}</span></p>
                 <p style={{ fontWeight: 'bold' }}>Mobile Number: <span>{formData.customer?.mobile}</span></p>
               </div>
             </div>
@@ -202,44 +197,52 @@ const InvoiceDetails = () => {
           </div>
 
           <div className="row section">
-            <div className="col-md-12">
-              <table className="table table-bordered border-black">
-                <thead className='table-success border-black'>
-                  <tr>
-                    <th className='text-center'>Sr No</th>
-                    <th className='text-center'>Item Name</th>
-                    <th className='text-center'>Price (Rs)</th>
-                    <th className='text-center'>Quantity</th>
-                    <th className='text-center'>Total (Rs)</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {formData.products.map((product, index) => (
-                    <tr key={index}>
-                      <td className='text-center'>{index + 1}</td>
-                      <td className='text-center'>{product.product_name}</td>
-                      <td className='text-center'>{product.dPrice}&nbsp;₹ {product.product_unit ? ` per ${product.product_unit}` : ''}</td>
-                      <td className='text-center'>{product.dQty}{product.product_unit ? ` ${product.product_unit}` : ''}</td>
-                      <td className='text-center'>{product.total_price}&nbsp;₹</td>
-                    </tr>
-                  ))}
-                  <tr>
-                    <td colSpan="4">Grand Total</td>
-                    <td className='text-center'>{formData.finalAmount}&nbsp;₹</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
+  <div className="col-md-12">
+    <table className="table table-bordered border-black">
+      <thead className="table-success border-black">
+        <tr>
+          <th className="text-center">Sr No</th>
+          <th className="text-center">Item Name</th>
+          <th className="text-center">Size</th>
+          <th className="text-center">Price (Rs)</th>
+          <th className="text-center">Quantity</th>
+          <th className="text-center">Total (Rs)</th>
+        </tr>
+      </thead>
+      <tbody>
+        {Array.isArray(formData.products) && formData.products.length > 0 ? (
+          formData.products.map((product, index) => (
+            <tr key={index}>
+              <td className="text-center">{index + 1}</td>
+              <td className="text-center">{product.product_name || 'N/A'}</td>
+              <td className="text-center">{product.product_size || 'N/A'}</td>
+              <td className="text-center">
+                {product.dPrice}&nbsp;₹
+                {product.product_unit ? ` per ${product.product_unit}` : ''}
+              </td>
+              <td className="text-center">
+                {product.dQty}
+                {product.product_unit ? ` ${product.product_unit}` : ''}
+              </td>
+              <td className="text-center">
+                {product.total_price || 0}&nbsp;₹
+              </td>
+            </tr>
+          ))
+        ) : (
+          <tr>
+            <td colSpan="5" className="text-center text-muted">
+              No products available
+            </td>
+          </tr>
+        )}
+      </tbody>
+    </table>
+  </div>
+</div>
 
-          <div className="row section">
-            <div className="col-md-12 flex">
-              <p>
-                Total Amount (In Words): &nbsp;
-                <span>{totalAmountWords} Rupees Only </span>
-              </p>
-            </div>
-          </div>
+
+        
 
           <div className="row section">
             <div className="col-md-12">
@@ -257,7 +260,7 @@ const InvoiceDetails = () => {
                   </tr>
                   <tr>
                     <td>Balance Amount:</td>
-                    <td>{remainingAmount.toFixed(2)}&nbsp;₹</td>
+                    <td>{formData.balance_amount}&nbsp;₹</td>
                   </tr>
                   <tr>
                     <td>Payment Mode:</td>
@@ -295,8 +298,8 @@ const InvoiceDetails = () => {
 
           <div className='d-flex justify-content-center'>
             <CButton color="primary" variant="outline" onClick={handlePrint} className='d-print-none me-2'>Print</CButton>
-            <CButton color="success" variant="outline" onClick={() => handleDownload('marathi')} className='d-print-none me-2'>Download (Marathi)</CButton>
-            <CButton color="success" variant="outline" onClick={() => handleDownload('english')} className='d-print-none'>Download (English)</CButton>
+            {/* <CButton color="success" variant="outline" onClick={() => handleDownload('marathi')} className='d-print-none me-2'>Download (Marathi)</CButton> */}
+            {/* <CButton color="success" variant="outline" onClick={() => handleDownload('english')} className='d-print-none'>Download</CButton> */}
           </div>
         </CContainer>
       </CCardBody>

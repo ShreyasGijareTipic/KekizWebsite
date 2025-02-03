@@ -23,6 +23,10 @@ class Customer extends Model
     {
         return $this->hasOne(PaymentTracker::class, 'customer_id');
     }
+    public function relatives()
+{
+    return $this->hasMany(Relative::class, 'customer_id');
+}
 
     public function jarTrackers()
     {

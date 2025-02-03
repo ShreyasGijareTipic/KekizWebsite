@@ -11,6 +11,7 @@ use App\Http\Controllers\OrderController;
 use App\Http\Controllers\JarTrackerController;
 use App\Http\Controllers\ExpenseTypeController;
 use App\Http\Controllers\ExpenseController;
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\FileUpload;
 use App\Http\Controllers\CustomerController;
 use App\Http\Middleware\Authorization;
@@ -20,8 +21,18 @@ use App\Http\Controllers\PaymentTrackerController; // Added controller
 // ini_set('display_errors', 1);
 // ini_set('display_startup_errors', 1);
 // error_reporting(E_ALL);
+Route::post('/orders', [OrderController::class, 'store']); // Create an order
+Route::get('order/{id}', [OrderController::class, 'show']);
+Route::get('/order',[OrderController::class,'index']);
+Route::put('/order/{id}', [OrderController::class, 'update']);
+Route::put('/order/{id}/balance', [OrderController::class, 'updateBalance']); // Update Balance
+Route::put('/order/{id}/deliver', [OrderController::class, 'markAsDelivered']); // Mark as Delivered
+Route::put('/order/{id}/cancel', [OrderController::class, 'cancelOrder']); // Cancel Order
+Route::get('/dashboard', [DashboardController::class, 'getDashboardData']);
 
-Route::post('/orders', [OrderController::class, 'store'])->middleware('auth:sanctum');
+
+
+
 
 //public API's
 Route::post('/register',[AuthController::class, 'register']);

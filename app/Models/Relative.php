@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -8,17 +9,14 @@ class Relative extends Model
 {
     use HasFactory;
 
-    protected $fillable = [
-        'order_id', 'customer_id', 'delivery_for', 'name', 'birthdate',
-    ];
-
-    public function order()
-    {
-        return $this->belongsTo(Order::class);
-    }
+    protected $fillable = ['customer_id', 'name', 'delivery_for', 'birthdate','order_id'];
 
     public function customer()
     {
         return $this->belongsTo(Customer::class);
+    }
+    public function order()
+    {
+        return $this->belongsTo(Order::class); // Define the inverse relationship
     }
 }

@@ -10,7 +10,7 @@ const AllUser = React.lazy(() => import('./views/pages/register/AllUser'))
 //Invoice
 const Delivery = React.lazy(() => import('./views/pages/invoice/Delivery'))
 const Invoice = React.lazy(() => import('./views/pages/invoice/Invoice'))
-const Invoice2 = React.lazy(() => import('./views/pages/invoice/Invoice2'))
+const BillCreate = React.lazy(()=> import('./views/pages/invoice/BillCreate'))
 
 const Booking = React.lazy(() => import('./views/pages/invoice/Booking'))
 const Orders = React.lazy(() => import('./views/pages/invoice/Orders'))
@@ -121,8 +121,7 @@ export default function fetchRoutes(){
     { path: '/dashboard', name: 'Dashboard', element: Dashboard },
     { path: '/delivery', name: 'Delivery', element: Delivery },
     { path: '/invoice', name: 'invoice', element: Invoice },
-    { path: '/invoice2', name: 'invoice', element: Invoice2 },
-
+    { path: '/BillCreate', name:'bill create', element: BillCreate},
     { path: '/booking', name: 'Booking', element: Booking },
     { path: '/invoice-details/:id', name: 'InvoiceDetails', element: InvoiceDetails },
     { path: '/bookings', name: 'Advance Bookings', element: Orders },

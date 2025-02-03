@@ -9,6 +9,7 @@ import {
   CCardHeader,
   CCol,
   CForm,
+  CFormCheck,
   CFormInput,
   CFormLabel,
   CFormSelect,
@@ -54,36 +55,66 @@ const Invoice = () => {
   const [showQR, setShowQR] = useState(false);
   const [errorMessage, setErrorMessage] = useState();
   const [suggestions, setSuggestions] = useState([]);
-  const [customerName, setCustomerName] = useState({});
+  
   const [customerHistory, setCustomerHistory] = useState()
   const [allProducts, setAllProducts] = useState()
+  const [customerName, setCustomerName] = useState({
+    name: '',
+    mobile: '',
+    address: '',
+    id: null, // Ensure id is included for comparison
+  });
 
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [customProduct, setCustomProduct] = useState({ name: '', size: '', price: 0, qty: 0 });
   const [showCustomOrderModal, setShowCustomOrderModal] = useState(false);
 
   const [showCustomerModal, setShowCustomerModal] = useState(false);
+  const [isOrderForOthers, setIsOrderForOthers] = useState(false);  // Track checkbox state
+const [deliveryFor, setDeliveryFor] = useState("");  // Delivery options
+const [deliveryName, setDeliveryName] = useState("");  // Recipient Name
+const [deliveryBirthdate, setDeliveryBirthdate] = useState("");  // Recipient Birthdate
+
+
+// Include relatives data in the order
+const relatives = isOrderForOthers
+  ? [{ name: deliveryName, relation: deliveryFor, birthdate: deliveryBirthdate }]
+  : [];
 
   const [state, setState] = useState({
+    customerName: '',
     customerId: null,
+    invoiceType: 1,
+    invoiceDate: new Date().toISOString().split('T')[0],
+    deliveryDate: new Date().toISOString().split('T')[0],
+    deliveryFor: '',
+    deliveryName: '',
+    deliveryBirthdate: new Date().toISOString().split('T')[0],
+    items: [{ product: '', size: '', price: 0, qty: 1 }],
+    relative:[] ,  // Array to hold relative data (optional)
     totalAmount: 0,
-    paidAmount: 0,
+    finalAmount: 0,
     balanceAmount: 0,
-    products: [
-      {
-        product_id: '',
-        qty: 0,
-        price: 0,
-      },
-    ],
-    relatives: [
-      {
-        delivery_for: '',
-        name: '',
-        birthdate: '',
-      },
-    ],
+    discount: 0,
+    paidAmount: 0,
+    orderStatus: 1,  // Adjust order status as per your requirement
   });
+  const handleOrderForOthersChange = (e) => {
+    setIsOrderForOthers(e.target.checked);
+  };
+  
+  const handleDeliveryForChange = (e) => {
+    setDeliveryFor(e.target.value);
+  };
+  
+  const handleDeliveryNameChange = (e) => {
+    setDeliveryName(e.target.value);
+  };
+  
+  const handleDeliveryBirthdateChange = (e) => {
+    setDeliveryBirthdate(e.target.value);
+  };
+  
 
   const { showSpinner, hideSpinner } = useSpinner();
   const { showToast } = useToast();
@@ -97,6 +128,7 @@ const Invoice = () => {
 
   const handleNameChange = (event) => {
     const value = event.target.value;
+    setCustomerName({ name: value });
     setState((prevState) => ({ ...prevState, customerName: value }));
     if (value) {
       debouncedSearchCustomer(value);
@@ -122,36 +154,35 @@ const Invoice = () => {
   useEffect(() => {
     calculateTotalAmount();
   }, [state.items]);
-
+  
   useEffect(() => {
     calculateBilledAmount();
   }, [state.totalAmount, state.discount]);
-
+  
   useEffect(() => {
     calculateBalanceAmount();
   }, [state.billedAmount, state.paidAmount]);
-
-
+  
   const calculateTotalAmount = () => {
     const total = state.items.reduce((acc, item) => acc + item.qty * item.price, 0);
     setState((prevState) => ({ ...prevState, totalAmount: total }));
   };
-
-  // Helper: Calculate billed amount
+  
   const calculateBilledAmount = () => {
     const discountAmount = (state.totalAmount * state.discount) / 100;
     const billed = state.totalAmount - discountAmount;
     setState((prevState) => ({ ...prevState, billedAmount: billed }));
   };
-
   
   const calculateBalanceAmount = () => {
     const balance = state.billedAmount - state.paidAmount;
     setState((prevState) => ({ ...prevState, balanceAmount: balance }));
   };
+  
 
 
   const handleProductChange = (index, productId) => {
+    if (!state.products) return; // Add this check
     const product = state.products.find((p) => p.id === productId);
     const updatedItems = [...state.items];
     updatedItems[index] = {
@@ -163,7 +194,8 @@ const Invoice = () => {
     };
     setState((prevState) => ({ ...prevState, items: updatedItems }));
   };
-
+  
+  
   const handleSizeChange = (index, sizeId) => {
     const product = state.products.find((p) => p.id === state.items[index].product);
     const size = product?.sizes.find((s) => s.id === sizeId);
@@ -176,7 +208,7 @@ const Invoice = () => {
     };
     setState((prevState) => ({ ...prevState, items: updatedItems }));
   };
-
+  
   const handleQtyChange = (index, qty) => {
     const updatedItems = [...state.items];
     updatedItems[index] = {
@@ -186,6 +218,7 @@ const Invoice = () => {
     };
     setState((prevState) => ({ ...prevState, items: updatedItems }));
   };
+  
 
   // Add new row
   const addNewRow = () => {
@@ -194,8 +227,7 @@ const Invoice = () => {
       items: [...prevState.items, { product: '', size: '', price: 0, qty: 0, total: 0 }],
     }));
   };
-
-  // Remove row
+  
   const removeRow = (index) => {
     const updatedItems = state.items.filter((_, i) => i !== index);
     setState((prevState) => ({ ...prevState, items: updatedItems }));
@@ -209,19 +241,63 @@ const Invoice = () => {
     return total;
   };
 
+  const getCustomerHistory = async (customer_id)=>{
+    try {
+      //customerHistory
+      const response = await getAPICall('/api/customerHistory?id=' + customer_id);
+      if (response) {
+        setCustomerHistory(response);
+      }
+    } catch (error) {
+      showToast('danger', 'Error occured ' + error);
+    }
+  }
+
  
 
+  // const handleSuggestionClick = (suggestion) => {
+  //   // Update customer name and ID in state
+  //   setCustomerName(suggestion.name);
+  //   setState((prevState) => ({
+  //     ...prevState,
+  //     customerName: suggestion.name,
+  //     customerId: suggestion.id,
+  //   }));
+  
+  //   // Clear the suggestion list
+  //   setSuggestions([]);
+  
+  //   // Fetch and display customer history
+  //   getCustomerHistory(suggestion.id);
+  // };
+
   const handleSuggestionClick = (suggestion) => {
-    setCustomerName(suggestion); // Update customer name
-    setState((prev) => ({ ...prev, customer_id: suggestion.id }));
+    console.log("Selected Suggestion:", suggestion);
+  
+    setCustomerName(suggestion);
+    console.log("Updated customerName:", suggestion);
+  
+    setState((prevState) => {
+      const newState = { ...prevState, customerId: suggestion.id };
+      console.log("Updated State:", newState);
+      return newState;
+    });
   
     const updatedProducts = discountedPrices([...allProducts], suggestion.discount);
-    setAllProducts(updatedProducts);  // Update all products with discount
-    calculateTotal(updatedProducts);  // Calculate the total price
-    setSuggestions([]);  // Clear the suggestion list
-    getCustomerHistory(suggestion.id);  // Fetch customer history
-};
+    console.log("Updated Products with Discount:", updatedProducts);
+    setAllProducts(updatedProducts);
+  
+    calculateTotal(updatedProducts);
+  
+    setSuggestions([]);
+    console.log("Suggestions cleared");
+  
+    getCustomerHistory(suggestion.id);
+    console.log("Fetching customer history for ID:", suggestion.id);
+  };
+  
 
+  
 
   const discountedPrices = (products, discount) =>{
     products.forEach(p=>{
@@ -279,56 +355,110 @@ const Invoice = () => {
     // Close the modal
     setShowCustomOrderModal(false);
   };
+
+ 
   
 
-  const handleSubmit = async (event) => {
-    event.preventDefault();
+  const handleSubmit = async (e) => {
+    e.preventDefault();
 
-    if (!state.customerId) {
-        showToast('warning', 'Please select or add a customer.');
-        return;
-    }
+    
+    const orderStatus = state.invoiceType === 1 ? 1 : 2; // Set the order status based on the invoice type
 
-    if (state.items.length === 0 || state.items.every((item) => item.qty <= 0)) {
-        showToast('warning', 'Please add at least one product with a quantity greater than zero.');
-        return;
-    }
+    // Debug Step 1: Log form state before sending
+    console.log("🟢 Form State:", state);
+  
+    const relativesData = isOrderForOthers && deliveryName && deliveryFor
+        ? [{ name: deliveryName, delivery_for: deliveryFor, birthdate: deliveryBirthdate || null }]
+        : [];
 
-    const payload = {
+    const orderData = {
         customer_id: state.customerId,
         total_amount: state.totalAmount,
         paid_amount: state.paidAmount,
         balance_amount: state.balanceAmount,
-        products: state.items.map((item) => ({
+        order_status: orderStatus,
+        discount:state.discount,
+        delivery_date:state.deliveryDate,
+        invoiceDate: state.invoiceDate || null,
+        order_type: state.invoiceType,
+        products: state.items.map(item => ({
             product_id: item.product,
+            product_size_id: item.size,
             qty: item.qty,
             price: item.price,
         })),
-        relatives: [
-            {
-                name: state.deliveryName,
-                delivery_for: state.deliveryFor,
-                birthdate: state.deliveryBirthdate,
-            },
-        ],
+        relatives: relativesData.length > 0 ? relativesData : [],
     };
 
+    // Debug Step 2: Log final request data before sending
+    console.log("🚀 Sending Order Data:", JSON.stringify(orderData, null, 2));
+
     try {
-        showSpinner();
-        const response = await post('/api/order', payload);
-        if (response) {
-            showToast('success', 'Order placed successfully.');
-            navigate('/invoice-details/' + response.id);
-        } else {
-            showToast('danger', 'Error placing the order.');
+        const response = await fetch('/api/orders', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(orderData),
+        });
+
+        // Debug Step 3: Log response status
+        console.log("🟡 Response Status:", response.status);
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! Status: ${response.status}`);
         }
+
+        const data = await response.json();
+        
+        // Debug Step 4: Log response data
+        console.log("✅ Order created successfully:", data);
+
+        // ✅ Navigate only if order ID exists
+        if (data.order && data.order.id) {
+            console.log("🔀 Redirecting to Invoice Page...");
+            navigate(`/invoice-details/${data.order.id}`);
+        } else {
+            console.error("❌ Order ID missing in response!");
+        }
+
     } catch (error) {
-        showToast('danger', 'Error while placing the order.');
-    } finally {
-        hideSpinner();
+        console.error("❌ Fetch Error:", error);
     }
 };
 
+
+  
+
+
+  const handleClear = () => {
+    setState({
+      customerName: '',
+      customerId: null,
+      invoiceDate: new Date().toISOString().split('T')[0],
+      items: [
+        {
+          product: '',
+          size: '',
+          price: 0,
+          qty: 0,
+          total: 0,
+        },
+      ],
+      discount: 0,
+      paidAmount: 0,
+      balanceAmount: 0,
+      billedAmount: 0,
+      totalAmount: 0,
+      products: [],
+    });
+    setSuggestions([]);
+    setValidated(false);
+    setShowQR(false);
+    setErrorMessage(null);
+  };
+  
 
   const fetchProducts = async () => {
     try {
@@ -359,105 +489,69 @@ const Invoice = () => {
   
 
   return (
-    <CRow>
-     <NewCustomerModal hint={state.customerName} onSuccess={onCustomerAdded} visible={showCustomerModal} setVisible={setShowCustomerModal} />
-      <QRCodeModal visible={showQR} setVisible={setShowQR}></QRCodeModal>
-      <CCol xs={12}>
-        <CCard className="mb-4">
-          <CCardHeader>
-            <strong>{t('invoice.new_invoice')}</strong>
-          </CCardHeader>
-          <CCardBody>
-            <CForm noValidate validated={validated} onSubmit={handleSubmit}>
-              <div className="row mb-2">
-              <div className="col-9">
-                  <CFormInput
-                    type="text"
-                    id="pname"
-                    placeholder={t('invoice.customer_name')}
-                    name="customerName"
-                    value={state.customerName}
-                    onChange={handleNameChange}
-                    autoComplete="off"
-                    required
-                  />
-                  {/* Display suggestions */}
-                  {state.customerName?.length > 0 && (
-  <ul className="suggestions-list">
-    {suggestions.map((suggestion, index) => (
-      <li key={index} onClick={() => handleSuggestionClick(suggestion)}>
-        {suggestion.name + ' (' + suggestion.mobile + ')'}
-      </li>
-    ))}
+     <CRow>
+          <NewCustomerModal hint={customerName.name} onSuccess={onCustomerAdded} visible={showCustomerModal} setVisible={setShowCustomerModal} />
+          <QRCodeModal visible={showQR} setVisible={setShowQR}></QRCodeModal>
+          <CCol xs={12}>
+            <CCard className="mb-4">
+              <CCardHeader>
+                <strong>{t('invoice.new_invoice')}</strong>
+              </CCardHeader>
+              <CCardBody>
+                <CForm noValidate validated={validated} onSubmit={handleSubmit}>
+                  <div className="row mb-2">
+                    <div className="col-9">
+                      <CFormInput
+                        type="text"
+                        id="pname"
+                        placeholder={t('invoice.customer_name')}
+                        name="customerName"
+                        value={customerName.name}
+                        onChange={handleNameChange}
+                        autoComplete="off"
+                        required
+                      />
+                      {customerName.name && customerName.name.length > 0 && (
+                    <ul className="suggestions-list">
+                      {suggestions.map((suggestion, index) => (
+                        <li key={index} onClick={() => handleSuggestionClick(suggestion)}>
+                          {suggestion.name} ({suggestion.mobile})
+                        </li>
+                      ))}
+                      {!customerName.id && (
+                        <li>
+                          <CBadge role="button" color="danger" onClick={() => setShowCustomerModal(true)}>
+                            {t('invoice.new_customer')}
+                          </CBadge>
+                        </li>
+                      )}
+                    </ul>
+                  )}
 
-    {/* Show "New Customer" option if the name is not in the suggestions */}
-    {!suggestions.some((suggestion) => suggestion.name === state.customerName) && (
-      <li>
-        <CBadge
-          role="button"
-          color="danger"
-          onClick={() => setShowCustomerModal(true)}
-        >
-          {t('invoice.new_customer')}
-        </CBadge>
-      </li>
-    )}
-  </ul>
-)}
-                </div>
-
-                {/* <div className="col-3">
-                  <CBadge role="button" color="danger" onClick={() => setShowCustomerModal(true)}>
-                    {t('invoice.new_customer')}
-                  </CBadge>
-                </div> */}
-              </div>
-              {/* Selected Customer Information */}
-              {customerName.id && (
-                <div className="row">
-                  <div className="col-sm-12 mt-1">
-                    <CAlert color="success">
-                      <p>
-                        <strong>{t('invoice.name')}:</strong> {customerName.name} ({customerName.mobile}) <br />
-                        <strong>{t('LABELS.birthdate')}: </strong> {customerName.birthdate}<br />
-                            <strong>{t('LABELS.anniversary_date')}: </strong> {customerName.anniversary_date}
-                        {customerName.address && (
-                          <>
-                            
-                          </>
-                        )}
-                        {customerHistory && (
-                          <>
-                            {customerHistory.pendingPayment > 0 && (
-                              <>
-                                <br />
-                                {t('invoice.credit')}{' '}
-                                <strong className="text-danger">{customerHistory.pendingPayment}</strong> {t('invoice.rs')}
-                              </>
-                            )}
-                            {customerHistory.pendingPayment < 0 && (
-                              <>
-                                <br />
-                                {t('invoice.balance')} ({t('invoice.advance')}){' '}
-                                <strong className="text-success">{customerHistory.pendingPayment * -1}</strong> {t('invoice.rs')}
-                              </>
-                            )}
-                            {customerHistory.returnEmptyProducts
-                              .filter((p) => p.quantity > 0)
-                              .map((p) => (
-                                <>
-                                  <br />
-                                  {t('invoice.collect')}{' '}
-                                  <strong className="text-danger"> {p.quantity} </strong> {t('invoice.empty')} <strong className="text-danger"> {p.product_name} </strong>
-                                </>
-                              ))}
-                          </>
-                        )}
-                      </p>
-                    </CAlert>
+                    </div>
+                    {/* <div className="col-3">
+                      <CBadge role="button" color="danger" onClick={() => setShowCustomerModal(true)}>
+                        {t('invoice.new_customer')}
+                      </CBadge>
+                    </div> */}
                   </div>
-                </div>
-              )}
+                  {customerName.id && (
+                    <div className="row">
+                      <div className="col-sm-12 mt-1">
+                        <CAlert color="success">
+                          <p>
+                            <strong>{t('invoice.name')}:</strong> {customerName.name} ({customerName.mobile}) <br />
+                            {customerName.address && (
+                              <>
+                                <strong>{t('invoice.address')}: </strong> {customerName.address}
+                              </>
+                            )}
+                            
+                          </p>
+                        </CAlert>
+                      </div>
+                    </div>
+                  )}
               <div className="row">
                 <div className="col-sm-4">
                   <div className="mb-3">
@@ -516,46 +610,63 @@ const Invoice = () => {
                 </div>
               </div>
 
-              <div className="row">
-                <div className="col-sm-4">
-                  <div className="mb-3">
-                    <CFormLabel>Order Delivery Cake For</CFormLabel>
-                    <CFormSelect
-                      name="deliveryFor"
-                      value={state.deliveryFor}
-                      onChange={handleChange}
-                    >
-                      <option value="">Select</option>
-                      <option value="spouse">Spouse</option>
-                      <option value="family">Family</option>
-                      <option value="friend">Friend</option>
-                    </CFormSelect>
+              {/* Checkbox for "Order for Others" */}
+            <div className="mb-3">
+              <CFormCheck
+                id="orderForOthers"
+                label="Delivery For Other"
+                checked={isOrderForOthers}
+                onChange={handleOrderForOthersChange}
+              />
+            </div>
+
+            {/* Conditional delivery fields */}
+            {isOrderForOthers && (
+              <>
+                <div className="row">
+                  <div className="col-sm-4">
+                    <div className="mb-3">
+                      <CFormLabel htmlFor="deliveryFor">Delivery For</CFormLabel>
+                      <CFormSelect
+                        id="deliveryFor"
+                        value={deliveryFor}
+                        onChange={handleDeliveryForChange}
+                      >
+                        <option value="">{t('invoice.select')}</option>
+                        <option value="spouse">Spouse</option>
+                        <option value="family">Family</option>
+                        <option value="friend">Friend</option>
+                      </CFormSelect>
+                    </div>
+                  </div>
+                  <div className="col-sm-4">
+                    <div className="mb-3">
+                      <CFormLabel htmlFor="deliveryName">Name</CFormLabel>
+                      <CFormInput
+                        type="text"
+                        id="deliveryName"
+                        name="deliveryName"
+                        value={deliveryName}
+                        onChange={handleDeliveryNameChange}
+                        placeholder={t('invoice.enter_name')}
+                      />
+                    </div>
+                  </div>
+                  <div className="col-sm-4">
+                    <div className="mb-3">
+                      <CFormLabel htmlFor="deliveryBirthdate">Birthdate</CFormLabel>
+                      <CFormInput
+                        type="date"
+                        id="deliveryBirthdate"
+                        name="deliveryBirthdate"
+                        value={deliveryBirthdate}
+                        onChange={handleDeliveryBirthdateChange}
+                      />
+                    </div>
                   </div>
                 </div>
-                <div className="col-sm-4">
-                  <div className="mb-3">
-                    <CFormLabel>Recipient Name</CFormLabel>
-                    <CFormInput
-                      type="text"
-                      name="deliveryName"
-                      value={state.deliveryName}
-                      placeholder="Enter Name"
-                      onChange={handleChange}
-                    />
-                  </div>
-                </div>
-                <div className="col-sm-4">
-                  <div className="mb-3">
-                    <CFormLabel>Recipient Birthdate</CFormLabel>
-                    <CFormInput
-                      type="date"
-                      name="deliveryBirthdate"
-                      value={state.deliveryBirthdate}
-                      onChange={handleChange}
-                    />
-                  </div>
-                </div>
-              </div>
+              </>
+            )}
               <div className="table-responsive mb-3">
                 <table className="table">
                   <thead>
@@ -568,77 +679,77 @@ const Invoice = () => {
                     </tr>
                   </thead>
                   <tbody>
-  {state.items.map((item, index) => {
-    const selectedProduct = state.products.find((p) => p.id === item.product);
-    const sizes = selectedProduct?.sizes || []; 
+                  {state.items.length > 0 && state.items.map((item, index) => {
+  const selectedProduct = Array.isArray(state.products) ? state.products.find((p) => p.id === item.product) : null;
+  const sizes = selectedProduct ? selectedProduct.sizes : []; // Fallback if no product found
 
-    return (
-      <tr key={index}>
-        {/* Product Selection */}
-        <td>
-          <CFormSelect
-            value={item.product}
-            onChange={(e) => handleProductChange(index, parseInt(e.target.value))}
-          >
-            <option value="">Select Product</option>
-            {state.products.map((product) => (
-              <option key={product.id} value={product.id}>
-                {product.name}
-              </option>
-            ))}
-          </CFormSelect>
-        </td>
-
-        {/* Size Selection */}
-        <td>
+  return (
+    <tr key={index}>
+      {/* Product Selection */}
+      <td>
         <CFormSelect
-            value={item.size} // Assuming 'size' represents the selected size's ID
-            onChange={(e) => handleSizeChange(index, parseInt(e.target.value))}
-            disabled={!item.product} // Disable if no product is selected
-          >
-            <option value="">Select Size</option>
-            {state.products
-              .find((p) => p.id === item.product) // Find the selected product
-              ?.sizes.map((size) => (
-                <option key={size.id} value={size.id}>
-                  {size.name}{/* Display size and price */}
-                </option>
-              ))}
-          </CFormSelect> 
-        </td>
+          value={item.product}
+          onChange={(e) => handleProductChange(index, parseInt(e.target.value))}
+        >
+          <option value="">Select Product</option>
+          {Array.isArray(state.products) && state.products.map((product) => (
+            <option key={product.id} value={product.id}>
+              {product.name}
+            </option>
+          ))}
+        </CFormSelect>
+      </td>
 
-        {/* Price */}
-        <td>{item.price || '-'}</td>
+      {/* Size Selection */}
+      <td>
+        <CFormSelect
+          value={item.size}
+          onChange={(e) => handleSizeChange(index, parseInt(e.target.value))}
+          disabled={!item.product} // Disable if no product is selected
+        >
+          <option value="">Select Size</option>
+          {sizes.map((size) => (
+            <option key={size.id} value={size.id}>
+              {size.name} {/* Display size and price */}
+            </option>
+          ))}
+        </CFormSelect>
+      </td>
 
-        {/* Quantity */}
-        <td>
-          <CFormInput
-            type="number"
-            value={item.qty}
-            onChange={(e) => handleQtyChange(index, parseInt(e.target.value, 10))}
-          />
-        </td>
+      {/* Price Column */}
+      <td>
+        {item.price || '-'} {/* Display price or fallback if no price */}
+      </td>
 
-        
+      {/* Quantity Column */}
+      <td>
+        <CFormInput
+          type="number"
+          value={item.qty}
+          onChange={(e) => handleQtyChange(index, parseInt(e.target.value, 10))}
+        />
+      </td>
 
-        {/* Actions */}
-        <td>
-          <div className="d-flex">
-            {state.items.length > 1 && (
-              <CButton color="danger" onClick={() => removeRow(index)}>
-                <CIcon icon={cilDelete} size="sm" />
-              </CButton>
-            )}
-            {index === state.items.length - 1 && (
-              <CButton color="success" onClick={addNewRow}>
-                <CIcon icon={cilPlus} size="sm" />
-              </CButton>
-            )}
-          </div>
-        </td>
-      </tr>
-    );
-  })}
+      {/* Action Column */}
+      <td>
+        <div className="d-flex">
+          {state.items.length > 1 && (
+            <CButton color="danger" onClick={() => removeRow(index)}>
+              <CIcon icon={cilDelete} size="sm" />
+            </CButton>
+          )}
+          {index === state.items.length - 1 && (
+            <CButton color="success" onClick={addNewRow}>
+              <CIcon icon={cilPlus} size="sm" />
+            </CButton>
+          )}
+        </div>
+      </td>
+    </tr>
+  );
+})}
+
+
 </tbody>
                 </table>
                 

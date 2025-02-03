@@ -261,41 +261,10 @@ export default function fetchNavItems(t1){
         icon: <CIcon icon={cibElasticStack} customClassName="nav-icon" />,
       },
       {
-        component: CNavGroup,
-        name: t("LABELS.report"),
-        icon: <CIcon icon={cilChart} customClassName="nav-icon" />,
-        items: [
-          {
-            component: CNavItem,
-            name: t("LABELS.customer_history_report"),
-            to: 'Reports/Customer_Report',
-          },
-          {
-            component: CNavItem,
-            name: t("LABELS.credit_report"),
-            to: 'Reports/creditReport',
-          },
-          // {
-          //   component: CNavItem,
-          //   name: 'Expense Report',
-          //   to: 'Reports/Expense_Report',
-          // },
-          // {
-          //   component: CNavItem,
-          //   name: 'Sales Report',
-          //   to: 'Reports/Sales_Report',
-          // },
-          // {
-          //   component: CNavItem,
-          //   name: 'Profit and Loss Report',
-          //   to: 'Reports/pnl_Report',
-          // },
-          {
-            component: CNavItem,
+        component: CNavItem,
             name: t("LABELS.report"),
             to: 'Reports/Reports',
-          },
-        ],
+            icon: <CIcon icon={cilChart} customClassName="nav-icon" />,
       },
       {
         component: CNavItem,
