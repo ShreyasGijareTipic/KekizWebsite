@@ -9,58 +9,82 @@ class DashboardController extends Controller
 {
     public function getDashboardData()
     {
-        // Fetch today's birthdays from the 'customers' table and eager load related data
-        $todaysBirthdays = Customer::whereDate('birthdate', Carbon::today())
-            ->with('relatives') // Eager load relatives of the customer
+        $today = Carbon::today();
+        $nextFifteenDays = Carbon::today()->addDays(15);
+
+        // Today's Birthdays
+        $todaysBirthdays = Customer::select('name', 'mobile', 'birthdate')
+            ->whereRaw("DATE_FORMAT(birthdate, '%m-%d') = ?", [$today->format('m-d')])
             ->get();
 
-        // Fetch today's birthdays from the 'relatives' table, and get the associated customers
-        $todaysRelativeBirthdays = Relative::whereDate('birthdate', Carbon::today())
-            ->with('customer') // Eager load the associated customer
+        // Today's Relatives' Birthdays
+        $todaysRelativeBirthdays = Relative::select('name', 'birthdate', 'customer_id')
+            ->whereRaw("DATE_FORMAT(birthdate, '%m-%d') = ?", [$today->format('m-d')])
+            ->with('customer:id,name,mobile')  // Fetch associated customer details
             ->get();
 
-        // Merge the data of customer birthdays and relative birthdays
-        $todaysBirthdays = $todaysBirthdays->merge($todaysRelativeBirthdays->map(function($relative) {
-            $relative->customer->is_relative = true; // Mark if it's a relative's birthday
-            return $relative->customer;
-        }));
-
-        // Fetch upcoming birthdays (next 7 days) from the 'customers' table
-        $upcomingBirthdays = Customer::whereDate('birthdate', '>', Carbon::today())
-            ->whereDate('birthdate', '<', Carbon::today()->addDays(7))
-            ->with('relatives') // Eager load relatives of the customer
+        // Today's Anniversaries
+        $todaysAnniversaries = Customer::select('name', 'mobile', 'anniversary_date')
+            ->whereRaw("DATE_FORMAT(anniversary_date, '%m-%d') = ?", [$today->format('m-d')])
             ->get();
 
-        // Fetch upcoming birthdays from the 'relatives' table, and get the associated customers
-        $upcomingRelativeBirthdays = Relative::whereDate('birthdate', '>', Carbon::today())
-            ->whereDate('birthdate', '<', Carbon::today()->addDays(7))
-            ->with('customer') // Eager load the associated customer
+        // Upcoming Birthdays
+        $upcomingBirthdays = Customer::select('name', 'mobile', 'birthdate')
+            ->whereRaw("DATE_FORMAT(birthdate, '%m-%d') BETWEEN ? AND ?", [
+                $today->addDay()->format('m-d'),
+                $nextFifteenDays->format('m-d')
+            ])
             ->get();
 
-        // Merge the data of customer birthdays and relative birthdays
-        $upcomingBirthdays = $upcomingBirthdays->merge($upcomingRelativeBirthdays->map(function($relative) {
-            $relative->customer->is_relative = true; // Mark if it's a relative's birthday
-            return $relative->customer;
-        }));
-
-        // Fetch today's anniversaries from the 'customers' table (based on anniversary_date)
-        $todaysAnniversaries = Customer::whereDate('anniversary_date', Carbon::today())
-            ->with('relatives') // Eager load relatives of the customer
+        // Upcoming Relatives' Birthdays
+        $upcomingRelativeBirthdays = Relative::select('name', 'birthdate', 'customer_id')
+            ->whereRaw("DATE_FORMAT(birthdate, '%m-%d') BETWEEN ? AND ?", [
+                $today->addDay()->format('m-d'),
+                $nextFifteenDays->format('m-d')
+            ])
+            ->with('customer:id,name,mobile')  // Fetch associated customer details
             ->get();
 
-        // Fetch upcoming anniversaries (next 7 days) from the 'customers' table (based on anniversary_date)
-        $upcomingAnniversaries = Customer::whereDate('anniversary_date', '>', Carbon::today())
-            ->whereDate('anniversary_date', '<', Carbon::today()->addDays(7))
-            ->with('relatives') // Eager load relatives of the customer
+        // Upcoming Anniversaries
+        $upcomingAnniversaries = Customer::select('name', 'mobile', 'anniversary_date')
+            ->whereRaw("DATE_FORMAT(anniversary_date, '%m-%d') BETWEEN ? AND ?", [
+                $today->addDay()->format('m-d'),
+                $nextFifteenDays->format('m-d')
+            ])
             ->get();
 
-        // Return the data in the expected structure
         return response()->json([
             'message' => 'Dashboard data retrieved successfully',
-            'todays_birthdays' => $todaysBirthdays,
-            'upcoming_birthdays' => $upcomingBirthdays,
-            'todays_anniversaries' => $todaysAnniversaries,
-            'upcoming_anniversaries' => $upcomingAnniversaries,
+            'todays_birthdays' => [
+                'customers' => $todaysBirthdays->map(function ($customer) {
+                    $customer->birthdate = Carbon::parse($customer->birthdate)->format('Y-m-d');
+                    return $customer;
+                }),
+                'relatives' => $todaysRelativeBirthdays->map(function ($relative) {
+                    $relative->birthdate = Carbon::parse($relative->birthdate)->format('Y-m-d');
+                    $relative->customer = $relative->customer ? $relative->customer : null;
+                    return $relative;
+                })
+            ],
+            'todays_anniversaries' => $todaysAnniversaries->map(function ($anniversary) {
+                $anniversary->anniversary_date = Carbon::parse($anniversary->anniversary_date)->format('Y-m-d');
+                return $anniversary;
+            }),
+            'upcoming_birthdays' => [
+                'customers' => $upcomingBirthdays->map(function ($customer) {
+                    $customer->birthdate = Carbon::parse($customer->birthdate)->format('Y-m-d');
+                    return $customer;
+                }),
+                'relatives' => $upcomingRelativeBirthdays->map(function ($relative) {
+                    $relative->birthdate = Carbon::parse($relative->birthdate)->format('Y-m-d');
+                    $relative->customer = $relative->customer ? $relative->customer : null;
+                    return $relative;
+                })
+            ],
+            'upcoming_anniversaries' => $upcomingAnniversaries->map(function ($anniversary) {
+                $anniversary->anniversary_date = Carbon::parse($anniversary->anniversary_date)->format('Y-m-d');
+                return $anniversary;
+            }),
         ]);
     }
 }

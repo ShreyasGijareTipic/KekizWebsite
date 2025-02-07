@@ -29,6 +29,12 @@ Route::put('/order/{id}/balance', [OrderController::class, 'updateBalance']); //
 Route::put('/order/{id}/deliver', [OrderController::class, 'markAsDelivered']); // Mark as Delivered
 Route::put('/order/{id}/cancel', [OrderController::class, 'cancelOrder']); // Cancel Order
 Route::get('/dashboard', [DashboardController::class, 'getDashboardData']);
+// Route::get('/reportSales', [OrderController::class, 'fetchSales']);
+Route::get('/sales', [OrderController::class, 'Sales']);
+
+
+Route::get('/reportSales', [OrderController::class, 'getSalesReport']);
+Route::get('/profit-loss', [OrderController::class, 'getProfitLossReport']);
 
 
 
@@ -51,7 +57,7 @@ Route::group(['middleware'=>['auth:sanctum']], function(){
     Route::resource('expenseType',ExpenseTypeController::class);
     Route::resource('expense',ExpenseController::class);
     Route::resource('order',OrderController::class);
-    Route::get('/reportSales', [OrderController::class, 'Sales']);
+    Route::get('/reportSales', [OrderController::class, 'getSalesReport']);
     Route::get('/googleMapData', [OrderController::class, 'googleMapData']);
     Route::get('/totalDeliveries', [OrderController::class, 'totalDeliverie']);
     

@@ -16,7 +16,8 @@ import {
   CTableHead,
   CTableHeaderCell,
   CTableRow,
-  CBadge
+  CBadge,
+  CSpinner
 } from '@coreui/react'
 import { getAPICall } from '../../../util/api'
 import { useNavigate } from 'react-router-dom'
@@ -29,6 +30,7 @@ const SalesReport = () => {
   const [totalPaid, setTotalPaid] = useState(0)
   const [totalRemaining, setTotalRemaining] = useState(0)
   const [validated, setValidated] = useState(false)
+  const [loading, setLoading] = useState(false)
   const { showToast } = useToast();
 
   const [state, setState] = useState({
@@ -43,11 +45,16 @@ const SalesReport = () => {
 
   const fetchSales = async () => {
     try {
+      setLoading(true)
       const resp = await getAPICall(
         '/api/reportSales?startDate=' + state.start_date + '&endDate=' + state.end_date,
       )
       if (resp) {
         const groupedSales = resp.reduce((acc, sale) => {
+          // Ensure proper conversion of values to numbers
+          const totalAmount = parseFloat(sale.total_amount) || 0;  // Default to 0 if NaN
+          const paidAmount = parseFloat(sale.paid_amount) || 0;  // Default to 0 if NaN
+
           if (!acc[sale.invoiceDate]) {
             acc[sale.invoiceDate] = {
               invoiceDate: sale.invoiceDate,
@@ -55,16 +62,18 @@ const SalesReport = () => {
               paidAmount: 0,
             }
           }
-          acc[sale.invoiceDate].totalAmount += sale.totalAmount
-          acc[sale.invoiceDate].paidAmount += sale.paidAmount
+
+          acc[sale.invoiceDate].totalAmount += totalAmount
+          acc[sale.invoiceDate].paidAmount += paidAmount
+
           return acc
         }, {})
 
         const salesArray = Object.values(groupedSales).map(sale => ({
           ...sale,
-          totalAmount: Math.round(sale.totalAmount),
-          paidAmount: Math.round(sale.paidAmount),
-          remainingAmount: Math.round(sale.totalAmount - sale.paidAmount)
+          totalAmount: Math.round(sale.totalAmount),  // Round numbers to integers
+          paidAmount: Math.round(sale.paidAmount),  // Round numbers to integers
+          remainingAmount: Math.round(sale.totalAmount - sale.paidAmount)  // Round numbers to integers
         }))
 
         setSales(salesArray)
@@ -73,14 +82,16 @@ const SalesReport = () => {
         const totalPaid = salesArray.reduce((acc, current) => acc + current.paidAmount, 0)
         const totalRemaining = salesArray.reduce((acc, current) => acc + current.remainingAmount, 0)
 
-        setTotalSales(Math.round(totalSales))
-        setTotalPaid(Math.round(totalPaid))
-        setTotalRemaining(Math.round(totalRemaining))
+        setTotalSales(Math.round(totalSales))  // Round numbers to integers
+        setTotalPaid(Math.round(totalPaid))  // Round numbers to integers
+        setTotalRemaining(Math.round(totalRemaining))  // Round numbers to integers
       } else {
         showToast('danger', 'Failed to fetch records');
       }
     } catch (error) {
-      showToast('danger', 'Error occured ' + error);
+      showToast('danger', 'Error occurred ' + error);
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -91,6 +102,10 @@ const SalesReport = () => {
       event.stopPropagation()
       setValidated(true)
       if (form.checkValidity()) {
+        if (state.end_date < state.start_date) {
+          showToast('danger', 'End date cannot be earlier than start date.');
+          return;
+        }
         await fetchSales()
       }
     } catch (e) {
@@ -147,37 +162,40 @@ const SalesReport = () => {
             </CForm>
             <hr />
             <div className='table-responsive'>
-              <CTable>
-                <CTableHead>
-                  <CTableRow>
-                    <CTableHeaderCell>Invoice Date</CTableHeaderCell>
-                    <CTableHeaderCell>Total Amount</CTableHeaderCell>
-                    <CTableHeaderCell>Paid Amount</CTableHeaderCell>
-                    <CTableHeaderCell>Remaining Amount</CTableHeaderCell>
-                  </CTableRow>
-                </CTableHead>
-                <CTableBody>
-                  {Sales.map((sale, index) => (
-                    <CTableRow key={index}>
-                      <CTableDataCell>{sale.invoiceDate}</CTableDataCell>
-                      <CTableDataCell>{sale.totalAmount}</CTableDataCell>
-                      <CTableDataCell>{sale.paidAmount}</CTableDataCell>
-                      <CTableDataCell>{sale.remainingAmount}</CTableDataCell>
+              {loading ? (
+                <CSpinner color="primary" />
+              ) : (
+                <CTable>
+                  <CTableHead>
+                    <CTableRow>
+                      <CTableHeaderCell>Invoice Date</CTableHeaderCell>
+                      <CTableHeaderCell>Total Amount</CTableHeaderCell>
+                      <CTableHeaderCell>Paid Amount</CTableHeaderCell>
+                      <CTableHeaderCell>Remaining Amount</CTableHeaderCell>
                     </CTableRow>
-                  ))}
-                  <CTableRow>
-                    <CTableHeaderCell>Total</CTableHeaderCell>
-                    <CTableHeaderCell>{totalSales}</CTableHeaderCell>
-                    <CTableHeaderCell>
-                      <CBadge color="success">{totalPaid}</CBadge>
-                    </CTableHeaderCell>
-                    <CTableHeaderCell>
-                      <CBadge color="danger">{totalRemaining}</CBadge>
-
+                  </CTableHead>
+                  <CTableBody>
+                    {Sales.map((sale, index) => (
+                      <CTableRow key={index}>
+                        <CTableDataCell>{sale.invoiceDate}</CTableDataCell>
+                        <CTableDataCell>{sale.totalAmount}</CTableDataCell>
+                        <CTableDataCell>{sale.paidAmount}</CTableDataCell>
+                        <CTableDataCell>{sale.remainingAmount}</CTableDataCell>
+                      </CTableRow>
+                    ))}
+                    <CTableRow>
+                      <CTableHeaderCell>Total</CTableHeaderCell>
+                      <CTableHeaderCell>{totalSales}</CTableHeaderCell>
+                      <CTableHeaderCell>
+                        <CBadge color="success">{totalPaid}</CBadge>
+                      </CTableHeaderCell>
+                      <CTableHeaderCell>
+                        <CBadge color="danger">{totalRemaining}</CBadge>
                       </CTableHeaderCell>
                     </CTableRow>
-                </CTableBody>
-              </CTable>
+                  </CTableBody>
+                </CTable>
+              )}
             </div>
           </CCardBody>
         </CCard>

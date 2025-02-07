@@ -322,39 +322,201 @@ const relatives = isOrderForOthers
   };
 
 
-  const handleCustomProductAdd = (customProduct) => {
-    // Create a custom product entry
-    const newProduct = {
-      id: Date.now(), // Unique ID for the custom product
-      name: customProduct.name, // Custom product name
-      sizes: [
-        {
-          id: Date.now(), // Unique ID for the custom size
-          name: customProduct.size, // Custom size name
-          price: customProduct.price, // Custom size price
-        },
-      ],
-    };
+  // const handleCustomProductAdd = (customProduct) => {
+  //   // Create a custom product entry
+  //   const newProduct = {
+  //     id: Date.now(), // Unique ID for the custom product
+  //     name: customProduct.name, // Custom product name
+  //     sizes: [
+  //       {
+  //         id: Date.now(), // Unique ID for the custom size
+  //         name: customProduct.size, // Custom size name
+  //         price: customProduct.price, // Custom size price
+  //       },
+  //     ],
+  //   };
   
-    // Add the custom product to the products array
-    setState((prevState) => ({
-      ...prevState,
-      products: [...prevState.products, newProduct], // Add to product list
-      items: [
-        ...prevState.items,
-        {
-          product: newProduct.id, // Reference custom product ID
-          size: newProduct.sizes[0].id, // Reference custom size ID
-          price: customProduct.price, // Use custom price
-          qty: customProduct.qty, // Use custom quantity
-          total: customProduct.price * customProduct.qty, // Calculate total
-        },
-      ],
-    }));
+  //   // Add the custom product to the products array
+  //   setState((prevState) => ({
+  //     ...prevState,
+  //     products: [...prevState.products, newProduct], // Add to product list
+  //     items: [
+  //       ...prevState.items,
+  //       {
+  //         product: newProduct.id, // Reference custom product ID
+  //         size: newProduct.sizes[0].id, // Reference custom size ID
+  //         price: customProduct.price, // Use custom price
+  //         qty: customProduct.qty, // Use custom quantity
+  //         total: customProduct.price * customProduct.qty, // Calculate total
+  //       },
+  //     ],
+  //   }));
   
-    // Close the modal
-    setShowCustomOrderModal(false);
+  //   // Close the modal
+  //   setShowCustomOrderModal(false);
+  // };
+  const handleCustomProductAdd = async (customProduct) => {
+    try {
+      // Step 1: Fetch user data and token from localStorage
+      const userData = JSON.parse(localStorage.getItem("userData"));
+      const userToken = userData ? userData.token : null;
+  
+      if (!userToken) {
+        throw new Error("User not authenticated. Please log in.");
+      }
+  
+      // Prepare product data for API request
+      const productData = {
+        name: customProduct.name, 
+        multiSize: true, 
+        sizes: [
+          {
+            size: customProduct.size, 
+            qty: customProduct.qty,
+            oPrice: customProduct.price, // Original price
+            bPrice: customProduct.bPrice || customProduct.price, // If bPrice is not provided, fallback to oPrice
+          },
+        ],
+      };
+  
+      // Step 2: Optimistically update the state (before API request)
+      const newProduct = {
+        id: Date.now(), // Unique ID for the custom product
+        name: customProduct.name, 
+        sizes: [
+          {
+            id: Date.now(), // Unique ID for the custom size
+            size: customProduct.size, 
+            oPrice: customProduct.price, 
+            bPrice: customProduct.bPrice || customProduct.price, 
+            qty: customProduct.qty,
+          },
+        ],
+      };
+  
+      // Optimistically update state for UI
+      setState((prevState) => ({
+        ...prevState,
+        products: [...prevState.products, newProduct], // Add product
+        items: [
+          ...prevState.items,
+          {
+            product: newProduct.id,
+            size: newProduct.sizes[0].id,
+            price: newProduct.sizes[0].oPrice,
+            qty: newProduct.sizes[0].qty,
+            total: newProduct.sizes[0].oPrice * newProduct.sizes[0].qty,
+          },
+        ],
+      }));
+  
+      // Step 3: Send API Request to Save Product & Sizes
+      const response = await fetch("/api/products", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${userToken}`,
+        },
+        body: JSON.stringify(productData),
+      });
+  
+      if (!response.ok) {
+        throw new Error("Failed to add product");
+      }
+  
+      // Step 4: Update the state with the actual response from the API
+      const savedProduct = await response.json();
+  
+      setState((prevState) => {
+        const updatedProducts = prevState.products.map(product =>
+          product.id === newProduct.id ? savedProduct : product
+        );
+  
+        const updatedItems = prevState.items.map(item =>
+          item.product === newProduct.id
+            ? { ...item, product: savedProduct.id, size: savedProduct.sizes[0].id }
+            : item
+        );
+  
+        return {
+          ...prevState,
+          products: updatedProducts,
+          items: updatedItems,
+        };
+      });
+  
+      // Close modal after success
+      setShowCustomOrderModal(false);
+  
+    } catch (error) {
+      console.error("Error adding product:", error);
+      alert(error.message); // Display an alert if there was an error
+    }
   };
+  
+
+  // const handleCustomProductAdd = async (customProduct) => {
+  //   try {
+  //     const userData = JSON.parse(localStorage.getItem("userData"));
+  //     const userToken = userData ? userData.token : null;
+
+  
+  //     if (!userToken) {
+  //       throw new Error("User not authenticated. Please log in.");
+  //     }
+  
+      
+  //     const productData = {
+  //       name: customProduct.name, 
+  //       multiSize: true, 
+  //       sizes: [
+  //         {
+  //           size: customProduct.size, 
+  //           qty: customProduct.qty,
+  //           oPrice: customProduct.price, 
+  //           bPrice: customProduct.bPrice || customProduct.price,
+  //         },
+  //       ],
+  //     };
+  
+  //     // Step 2: Send API Request to Save Product & Sizes
+  //     const response = await fetch("/api/products", {
+  //       method: "POST",
+  //       headers: {
+  //         "Content-Type": "application/json",
+  //         Authorization: `Bearer ${userToken}`, // Include user authentication token
+  //       },
+  //       body: JSON.stringify(productData),
+  //     });
+  
+  //     if (!response.ok) {
+  //       throw new Error("Failed to add product");
+  //     }
+  
+  //     const savedProduct = await response.json(); // Get saved product & sizes from API
+  
+  //     // Step 3: Update State with New Product & Sizes
+  //     setState((prevState) => ({
+  //       ...prevState,
+  //       products: [...prevState.products, savedProduct], // Add product with sizes
+  //       items: [
+  //         ...prevState.items,
+  //         {
+  //           product: savedProduct.id, // Product ID from API
+  //           size: savedProduct.sizes[0].id, // First Size ID
+  //           price: savedProduct.sizes[0].oPrice, // Use API price
+  //           qty: savedProduct.sizes[0].qty, // Use API quantity
+  //           total: savedProduct.sizes[0].oPrice * savedProduct.sizes[0].qty, // Calculate total
+  //         },
+  //       ],
+  //     }));
+  
+  //     setShowCustomOrderModal(false); // Close modal after success
+  //   } catch (error) {
+  //     console.error("Error adding product:", error);
+  //     alert(error.message);
+  //   }
+  // };
 
  
   
@@ -374,7 +536,7 @@ const relatives = isOrderForOthers
 
     const orderData = {
         customer_id: state.customerId,
-        total_amount: state.totalAmount,
+        total_amount: state.billedAmount,
         paid_amount: state.paidAmount,
         balance_amount: state.balanceAmount,
         order_status: orderStatus,

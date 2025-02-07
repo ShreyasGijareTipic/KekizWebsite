@@ -30,6 +30,7 @@ const InvoiceDetails = () => {
     status: '',
     DeliveryDate: '',
     InvoiceType: '',
+    
   });
 
   const numberToWords = (number) => {
@@ -254,6 +255,11 @@ const InvoiceDetails = () => {
                       <td>{formData.discount}&nbsp;%</td>
                     </tr>
                   )}
+                  <tr>
+                    <td>Total amount to be paid:</td>
+                    <td>{formData.finalAmount}&nbsp;₹</td>
+                  </tr>
+                  <tr></tr>
                   <tr>
                     <td>Amount Paid:</td>
                     <td>{formData.amountPaid}&nbsp;₹</td>

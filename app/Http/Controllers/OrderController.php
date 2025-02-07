@@ -8,7 +8,8 @@ use App\Models\Relative;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Validation\ValidationException;
+use Illuminate\Support\Facades\Auth;
+use Carbon\Carbon; // Correct import of Carbon
 
 class OrderController extends Controller
 {
@@ -36,7 +37,7 @@ class OrderController extends Controller
         ]);
 
         DB::beginTransaction();
-        
+
         try {
             $order = Order::create($validated);
 
@@ -89,7 +90,7 @@ class OrderController extends Controller
             return response()->json(['error' => 'Failed to fetch order', 'message' => $e->getMessage()], 500);
         }
     }
-    
+
     public function index(Request $request)
     {
         try {
@@ -144,32 +145,42 @@ class OrderController extends Controller
     }
 
     public function updateBalance(Request $request, $id)
-{
-    $order = Order::findOrFail($id);
-
-    // Validate that the 'balance_amount' is a numeric value and is greater than or equal to 0
-    $request->validate([
-        'balance_amount' => 'required|numeric|min:0',
-    ]);
-
-    // Convert both balance amounts to float for calculation
-    $newBalanceAmount = (float) $request->balance_amount;
-    $oldBalanceAmount = (float) $order->balance_amount;
-
-    // Calculate the difference between the old and new balance amount
-    $balanceDifference = $oldBalanceAmount - $newBalanceAmount;
-
-    // Update the balance amount and paid amount
-    $order->balance_amount = $newBalanceAmount;
-    $order->paid_amount += $balanceDifference; // Add the difference to the paid amount
-
-    // Save the updated order
-    $order->save();
-
-    return response()->json(['message' => 'Balance updated successfully', 'order' => $order]);
-}
-
-
+    {
+        $order = Order::findOrFail($id);
+    
+        $request->validate([
+            'balance_amount' => 'required|numeric|min:0',
+        ]);
+    
+        $requestBalanceAmount = $request->balance_amount;
+    
+        // Subtract the request balance amount from the existing balance amount
+        $order->balance_amount -= $requestBalanceAmount;
+    
+        // Add the request balance amount to the paid amount
+        $order->paid_amount += $requestBalanceAmount;
+    
+        // Ensure that balance_amount does not exceed total_amount
+        if ($order->balance_amount < 0) {
+            return response()->json([
+                'error' => 'Balance amount cannot be negative.',
+            ], 400);
+        }
+    
+        // Ensure that paid_amount does not exceed total_amount
+        if ($order->paid_amount > $order->total_amount) {
+            return response()->json([
+                'error' => 'Paid amount cannot exceed total amount.',
+            ], 400);
+        }
+    
+        $order->save();
+    
+        return response()->json([
+            'message' => 'Balance and Paid amount updated successfully',
+            'data' => $order,
+        ]);
+    }
 
     public function markAsDelivered($id)
     {
@@ -187,5 +198,173 @@ class OrderController extends Controller
         $order->save();
 
         return response()->json(['message' => 'Order canceled successfully', 'order' => $order]);
+    }
+
+    public function fetchSales(Request $request)
+    {
+        try {
+            $user = Auth::user(); // Get the authenticated user
+            $startDate = $request->input('startDate'); // Get start date from query parameters
+            $endDate = $request->input('endDate'); // Get end date from query parameters
+
+            // Validate date inputs (if provided)
+            $validated = $request->validate([
+                'startDate' => 'nullable|date',
+                'endDate' => 'nullable|date',
+            ]);
+
+            // Create the query to fetch orders from the database
+            $query = Order::where('order_status', 1) // Only delivered orders
+                ->where('company_id', $user->company_id); // Only orders for the authenticated user's company
+
+            // Apply date filters if provided
+            if (!empty($startDate) && !empty($endDate)) {
+                $query->whereBetween('invoiceDate', [$startDate, $endDate]);
+            }
+
+            // Get the orders
+            $orders = $query->get();
+
+            // Group orders by invoice date and calculate totalAmount, paidAmount, remainingAmount
+            $groupedSales = $orders->groupBy('invoiceDate')->map(function ($items) {
+                return [
+                    'invoiceDate' => $items->first()->invoiceDate,
+                    'totalAmount' => $items->sum('totalAmount'),
+                    'paidAmount' => $items->sum('paidAmount'),
+                ];
+            });
+
+            // Map the grouped sales to include remainingAmount
+            $salesData = $groupedSales->map(function ($sale) {
+                $sale['remainingAmount'] = $sale['totalAmount'] - $sale['paidAmount'];
+                return $sale;
+            });
+
+            // Return the sales data
+            return response()->json([
+                'message' => 'Sales data fetched successfully',
+                'data' => $salesData
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => 'Failed to fetch sales data',
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function Sales(Request $request)
+    {
+        try {
+            $user = Auth::user(); // Get the authenticated user
+            $startDate = $request->query('startDate'); // Get start date from query parameters
+            $endDate = $request->query('endDate'); // Get end date from query parameters
+    
+            // Create the query to fetch orders from the database
+            $query = Order::whereNotIn('order_status', [0, 2]) // Exclude canceled and pending orders
+                          ->where('company_id', $user->company_id) // Filter by user's company
+                          ->where('order_status', 1); // Only fetch delivered orders
+    
+            // Apply date filters if provided
+            if ($startDate && $endDate) {
+                $query->whereBetween('invoiceDate', [$startDate, $endDate]);
+            }
+    
+            // Get the result of the query
+            $result = $query->get();
+    
+            // Check if the result is empty
+            if ($result->isEmpty()) {
+                return response()->json(['message' => 'No sales data found for the given date range.'], 404);
+            }
+    
+            // Format the data to ensure numerical consistency and proper date format
+            $formattedResult = $result->map(function ($order) {
+                return [
+                    'id' => $order->id,
+                    'customer_id' => $order->customer_id,
+                    'total_amount' => number_format($order->total_amount, 2, '.', ''), // Ensure two decimal places
+                    'paid_amount' => number_format($order->paid_amount, 2, '.', ''),
+                    'balance_amount' => number_format($order->balance_amount, 2, '.', ''),
+                    'invoiceDate' => Carbon::parse($order->invoiceDate)->format('Y-m-d'), // Format the date
+                    'order_status' => $order->order_status,
+                    'order_type' => $order->order_type,
+                    'discount' => $order->discount,
+                    'company_id' => $order->company_id,
+                    'created_at' => $order->created_at->toDateTimeString(),
+                    'updated_at' => $order->updated_at->toDateTimeString(),
+                ];
+            });
+    
+            return response()->json($formattedResult);
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Failed to fetch sales data', 'message' => $e->getMessage()], 500);
+        }
+    }
+
+    public function getSalesReport(Request $request)
+{
+    $startDate = $request->query('startDate');
+    $endDate = $request->query('endDate');
+
+    if (!$startDate || !$endDate) {
+        return response()->json(['error' => 'Start date and end date are required'], 400);
+    }
+
+    $sales = DB::table('orders')
+        ->whereBetween('invoiceDate', [$startDate, $endDate])
+        ->select(
+            'invoiceDate',
+            DB::raw('SUM(total_amount) as totalAmount'),
+            DB::raw('SUM(paid_amount) as paidAmount'),
+            DB::raw('SUM(balance_amount) as balanceAmount')
+        )
+        ->groupBy('invoiceDate')
+        ->orderBy('invoiceDate', 'asc')
+        ->get();
+
+    return response()->json([
+        'message' => 'Sales data fetched successfully',
+        'data' => $sales
+    ], 200);
+}
+
+    
+    public function getProfitLossReport(Request $request)
+    {
+        $startDate = $request->query('startDate');
+        $endDate = $request->query('endDate');
+
+        if (!$startDate || !$endDate) {
+            return response()->json(['error' => 'Start date and end date are required'], 400);
+        }
+
+        $salesData = DB::table('orders')
+            ->whereBetween('invoiceDate', [$startDate, $endDate])
+            ->select('invoiceDate as date', DB::raw('SUM(total_amount) as totalSales'))
+            ->groupBy('invoiceDate')
+            ->get()
+            ->mapWithKeys(function ($sale) {
+                return [$sale->date => ['date' => $sale->date, 'totalSales' => (float) $sale->totalSales, 'totalExpenses' => 0]];
+            });
+
+        $expenseData = DB::table('expenses')
+            ->whereBetween('expense_date', [$startDate, $endDate])
+            ->select('expense_date as date', DB::raw('SUM(total_price) as totalExpenses'))
+            ->groupBy('expense_date')
+            ->get()
+            ->mapWithKeys(function ($expense) {
+                return [$expense->date => ['date' => $expense->date, 'totalSales' => 0, 'totalExpenses' => (float) $expense->totalExpenses]];
+            });
+
+        $reportData = collect($salesData)->mergeRecursive($expenseData);
+
+        foreach ($reportData as &$data) {
+            $data['totalSales'] = isset($data['totalSales']) ? (float) $data['totalSales'] : 0;
+            $data['totalExpenses'] = isset($data['totalExpenses']) ? (float) $data['totalExpenses'] : 0;
+            $data['profitOrLoss'] = round($data['totalSales'] - $data['totalExpenses'], 2);
+        }
+
+        return response()->json($reportData->values());
     }
 }

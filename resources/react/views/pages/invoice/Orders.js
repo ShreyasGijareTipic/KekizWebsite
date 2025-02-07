@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { CBadge, CCol, CRow } from '@coreui/react';
 import { MantineReactTable } from 'mantine-react-table';
-import { getAPICall, put } from '../../../util/api';
+import { getAPICall, putAPICall } from '../../../util/api';
 import ConfirmationModal from '../../common/ConfirmationModal';
 import { useToast } from '../../common/toast/ToastContext';
 import { CIcon } from '@coreui/icons-react';
@@ -36,7 +36,6 @@ const Orders = () => {
         `/api/order?orderType=${type}&page=${pagination.pageIndex + 1}&perPage=${pagination.pageSize}`
       );
 
-      // Filter data directly in the frontend if required, but ideally handle it in the backend API
       if (route === 'bookings') {
         setOrders(response.data.filter(order => order.order_status === 2)); // Only show bookings (order_type=2)
       } else {
@@ -52,12 +51,10 @@ const Orders = () => {
     }
   };
 
-  // Fetch data whenever pagination or route changes
   useEffect(() => {
     fetchOrders();
   }, [pagination.pageIndex, pagination.pageSize, route]);
 
-  // Handle deleting an order
   const handleDelete = async () => {
     try {
       await put(`/api/order/${deleteOrder.id}/cancel`);
@@ -69,7 +66,6 @@ const Orders = () => {
     }
   };
 
-  // Handle marking an order as delivered
   const handleMarkAsDelivered = async (orderId) => {
     try {
       await put(`/api/order/${orderId}/deliver`);
@@ -80,20 +76,27 @@ const Orders = () => {
     }
   };
 
-  // Update balance amount for the order
-  const updateBalanceAmount = async (orderId, amount) => {
+  const updateBalanceAmount = async (orderId, balance_amount) => {
+    if (balance_amount === null || balance_amount === '') {
+      showToast('danger', 'Balance amount is required');
+      return;
+    }
+
     try {
-      const response = await put(`/api/order/${orderId}/balance`, { balance_amount: amount });
-      if (response.data?.message === 'Balance updated successfully') {
+      const response = await putAPICall(`/api/order/${orderId}/balance`, { balance_amount });
+      console.log(response);
+      if (response?.message === 'Balance and Paid amount updated successfully') {
         showToast('success', 'Balance amount updated');
-        fetchOrders(); // Refetch to show updated data
+        
+        // Refresh the page after updating the balance
+        fetchOrders(); // Re-fetch the orders after balance update
+        setUpdatedBalance(null); // Reset the updated balance input field
       }
     } catch (error) {
-      showToast('danger', 'Error occurred ' + error);
+      showToast('danger', 'Error occurred: ' + (error.response?.data?.message || error.message));
     }
   };
 
-  // Columns for the MantineReactTable
   const columns = [
     { accessorKey: 'customer.name', header: 'Name' },
     {
@@ -107,7 +110,7 @@ const Orders = () => {
           &nbsp;&nbsp;
           <a
             className="btn btn-outline-success btn-sm"
-            href={`sms:+91${cell.row.original.customer?.mobile}?body=Outstanding payment: Rs. ${cell.row.original.balance}`}
+            href={`sms:+91${cell.row.original.customer?.mobile}?body=Outstanding payment: Rs. ${cell.row.original.balance_amount}`}
           >
             <CIcon icon={cilChatBubble} />
           </a>
@@ -115,16 +118,16 @@ const Orders = () => {
       ),
     },
     {
-      accessorKey: 'items',
+      id: 'items',
       header: 'Items',
       Cell: ({ cell }) => (
         cell.row.original.order_items.length > 0 ? (
           <table className="table table-sm">
             <tbody>
-              {cell.row.original.order_items.map((i) => (
-                <tr key={i.id}>
-                  <td>{i.product.name}</td>
-                  <td>{i.qty} X {i.price}₹</td>
+              {cell.row.original.order_items.map((item, index) => (
+                <tr key={index}>
+                  <td>{item.product.name}</td>
+                  <td>{item.qty} X {item.price}₹</td>
                 </tr>
               ))}
             </tbody>
@@ -137,40 +140,30 @@ const Orders = () => {
     { 
       accessorKey: 'balance_amount', 
       header: 'Balance Amount',
-      Cell: ({ cell }) => {
-        // `balance_amount` already exists in the table
-        return (
-          <span>{cell.row.original.balance_amount} ₹</span>
-        );
-      }
-    },
-    { accessorKey: 'discount', header: 'Discount' },
-    {
-      accessorKey: 'order_status',
-      header: 'Status',
       Cell: ({ cell }) => (
-        <CBadge color={cell.row.original.order_status === 0 ? 'danger' : cell.row.original.order_status === 1 ? 'success' : 'warning'}>
-          {cell.row.original.order_status === 0 ? 'Canceled' : cell.row.original.order_status === 1 ? 'Delivered' : 'Pending'}
-        </CBadge>
+        <span>{cell.row.original.balance_amount} ₹</span>
       ),
     },
+    { accessorKey: 'discount', header: 'Discount' },
+    { accessorKey: 'invoiceDate', header: 'Invoice Date' },
+    { accessorKey: 'delivery_date', header: 'Delivery Date' },
     {
       id: 'update_balance',
       header: 'Update Balance',
       Cell: ({ cell }) => (
         <div className="d-flex">
-          {cell.row.original.order_status !== 0 && (
+          {cell.row.original.balance_amount > 0 && cell.row.original.order_status !== 0 && (
             <div className="mt-2">
               <input 
                 type="number" 
-                value={updatedBalance || cell.row.original.balance_amount} 
+                value={updatedBalance !== null ? updatedBalance : cell.row.original.balance_amount} 
                 onChange={(e) => setUpdatedBalance(e.target.value)} 
                 className="form-control" 
                 placeholder="Enter Balance Amount" 
               />
               <button
                 className="btn btn-primary btn-sm mt-2"
-                onClick={() => updateBalanceAmount(cell.row.original.id, updatedBalance)}
+                onClick={() => updateBalanceAmount(cell.row.original.id, updatedBalance || cell.row.original.balance_amount)}
               >
                 Update Balance
               </button>
