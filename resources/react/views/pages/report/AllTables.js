@@ -14,7 +14,7 @@ function All_Tables({ selectedOption, salesData, expenseData, pnlData }) {
     { accessorKey: 'invoiceDate', header: 'Invoice Date' },
     { accessorKey: 'totalAmount', header: 'Total Amount', Cell: ({ cell }) => `₹${parseFloat(cell.getValue() || 0).toFixed(2)}` },
     { accessorKey: 'paidAmount', header: 'Paid Amount', Cell: ({ cell }) => `₹${parseFloat(cell.getValue() || 0).toFixed(2)}` },
-    { accessorKey: 'balanceAmount', header: 'Remaining Amount', Cell: ({ cell }) => `₹${parseFloat(cell.getValue() || 0).toFixed(2)}` },
+    { accessorKey: 'balanceAmount', header: 'Balance Amount', Cell: ({ cell }) => `₹${parseFloat(cell.getValue() || 0).toFixed(2)}` },
   ];
 
   // ✅ Expense Table Columns
