@@ -21,6 +21,7 @@ class OrderController extends Controller
             'paid_amount' => 'required|numeric|min:0',
             'balance_amount' => 'required|numeric|min:0',
             'order_status' => 'required|in:0,1,2',
+            'company_id'=>'required|integer',
             'invoiceDate' => 'nullable|date',
             'delivery_date' => 'nullable|date',
             'order_type' => 'required|in:1,2',
@@ -306,13 +307,15 @@ class OrderController extends Controller
 {
     $startDate = $request->query('startDate');
     $endDate = $request->query('endDate');
+    $companyId = $request->query('company_id');
 
-    if (!$startDate || !$endDate) {
-        return response()->json(['error' => 'Start date and end date are required'], 400);
+    if (!$startDate || !$endDate || !$companyId) {
+        return response()->json(['error' => 'Start date, end date, and company ID are required'], 400);
     }
 
     $sales = DB::table('orders')
         ->whereBetween('invoiceDate', [$startDate, $endDate])
+        ->where('company_id', $companyId)
         ->select(
             'invoiceDate',
             DB::raw('SUM(total_amount) as totalAmount'),
@@ -329,42 +332,53 @@ class OrderController extends Controller
     ], 200);
 }
 
+
     
-    public function getProfitLossReport(Request $request)
-    {
-        $startDate = $request->query('startDate');
-        $endDate = $request->query('endDate');
+public function getProfitLossReport(Request $request)
+{
+    $startDate = $request->query('startDate');
+    $endDate = $request->query('endDate');
+    $companyId = $request->query('company_id');
 
-        if (!$startDate || !$endDate) {
-            return response()->json(['error' => 'Start date and end date are required'], 400);
-        }
-
-        $salesData = DB::table('orders')
-            ->whereBetween('invoiceDate', [$startDate, $endDate])
-            ->select('invoiceDate as date', DB::raw('SUM(total_amount) as totalSales'))
-            ->groupBy('invoiceDate')
-            ->get()
-            ->mapWithKeys(function ($sale) {
-                return [$sale->date => ['date' => $sale->date, 'totalSales' => (float) $sale->totalSales, 'totalExpenses' => 0]];
-            });
-
-        $expenseData = DB::table('expenses')
-            ->whereBetween('expense_date', [$startDate, $endDate])
-            ->select('expense_date as date', DB::raw('SUM(total_price) as totalExpenses'))
-            ->groupBy('expense_date')
-            ->get()
-            ->mapWithKeys(function ($expense) {
-                return [$expense->date => ['date' => $expense->date, 'totalSales' => 0, 'totalExpenses' => (float) $expense->totalExpenses]];
-            });
-
-        $reportData = collect($salesData)->mergeRecursive($expenseData);
-
-        foreach ($reportData as &$data) {
-            $data['totalSales'] = isset($data['totalSales']) ? (float) $data['totalSales'] : 0;
-            $data['totalExpenses'] = isset($data['totalExpenses']) ? (float) $data['totalExpenses'] : 0;
-            $data['profitOrLoss'] = round($data['totalSales'] - $data['totalExpenses'], 2);
-        }
-
-        return response()->json($reportData->values());
+    if (!$startDate || !$endDate || !$companyId) {
+        return response()->json(['error' => 'Start date, end date, and company ID are required'], 400);
     }
+
+    // Fetch sales data
+    $salesData = DB::table('orders')
+        ->whereBetween('invoiceDate', [$startDate, $endDate])
+        ->where('company_id', $companyId)
+        ->select('invoiceDate as date', DB::raw('SUM(total_amount) as totalSales'))
+        ->groupBy('invoiceDate')
+        ->get()
+        ->keyBy('date');
+
+    // Fetch expense data
+    $expenseData = DB::table('expenses')
+        ->whereBetween('expense_date', [$startDate, $endDate])
+        ->where('company_id', $companyId)
+        ->select('expense_date as date', DB::raw('SUM(total_price) as totalExpenses'))
+        ->groupBy('expense_date')
+        ->get()
+        ->keyBy('date');
+
+    // Merge sales and expenses into a single report
+    $dates = $salesData->keys()->merge($expenseData->keys())->unique()->sort();
+
+    $reportData = $dates->map(function ($date) use ($salesData, $expenseData) {
+        $totalSales = isset($salesData[$date]) ? (float) $salesData[$date]->totalSales : 0;
+        $totalExpenses = isset($expenseData[$date]) ? (float) $expenseData[$date]->totalExpenses : 0;
+
+        return [
+            'date' => $date,
+            'totalSales' => $totalSales,
+            'totalExpenses' => $totalExpenses,
+            'profitOrLoss' => round($totalSales - $totalExpenses, 2),
+        ];
+    });
+
+    return response()->json($reportData->values());
+}
+
+
 }

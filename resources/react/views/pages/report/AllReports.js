@@ -55,21 +55,25 @@ function All_Reports() {
         showToast('warning', 'Please select valid dates before fetching data.');
         return;
       }
+      
+      const userData = JSON.parse(localStorage.getItem("userData"));
+      const company_id = userData ? userData?.user.company_id : null;
+      
   
       if (selectedOption === '1') {
-        const salesResponse = await getAPICall(`/api/reportSales?startDate=${date.start_date}&endDate=${date.end_date}`);
+        const salesResponse = await getAPICall(`/api/reportSales?startDate=${date.start_date}&endDate=${date.end_date}&company_id=${company_id}`);
         setSalesData({ data: Array.isArray(salesResponse?.data) ? salesResponse.data : [] });
         showToast('success', 'Sales data fetched successfully.');
       }
   
       if (selectedOption === '2') {
-        const expenseResponse = await getAPICall(`/api/expense?startDate=${date.start_date}&endDate=${date.end_date}`);
+        const expenseResponse = await getAPICall(`/api/expense?startDate=${date.start_date}&endDate=${date.end_date}&company_id=${company_id}`);
         setExpenseData({ data: Array.isArray(expenseResponse) ? expenseResponse : [] });
         showToast('success', 'Expense data fetched successfully.');
       }
   
       if (selectedOption === '3') {
-        const pnlResponse = await getAPICall(`/api/profit-loss?startDate=${date.start_date}&endDate=${date.end_date}`);
+        const pnlResponse = await getAPICall(`/api/profit-loss?startDate=${date.start_date}&endDate=${date.end_date}&company_id=${company_id}`);
         setPnLData({ data: Array.isArray(pnlResponse) ? pnlResponse : [] });
         showToast('success', 'Profit & Loss data fetched successfully.');
       }
@@ -77,6 +81,7 @@ function All_Reports() {
       showToast('danger', 'Error occurred: ' + error.message);
     }
   };
+  
   
 
   // ✅ Auto-fetch data when selectedOption or activeTab1 changes

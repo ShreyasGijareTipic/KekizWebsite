@@ -57,7 +57,7 @@ const Orders = () => {
 
   const handleDelete = async () => {
     try {
-      await put(`/api/order/${deleteOrder.id}/cancel`);
+      await putAPICall(`/api/order/${deleteOrder.id}/cancel`);
       setDeleteModalVisible(false);
       showToast('success', 'Order is canceled');
       fetchOrders();
@@ -68,7 +68,7 @@ const Orders = () => {
 
   const handleMarkAsDelivered = async (orderId) => {
     try {
-      await put(`/api/order/${orderId}/deliver`);
+      await putAPICall(`/api/order/${orderId}/deliver`);
       showToast('success', 'Order marked as delivered');
       fetchOrders();
     } catch (error) {
@@ -177,17 +177,34 @@ const Orders = () => {
       header: 'Actions',
       Cell: ({ cell }) => (
         <div>
-          {cell.row.original.order_status === 0 ? (
-            <CBadge color="danger">Canceled</CBadge>
-          ) : route === 'bookings' && cell.row.original.order_status === 2 ? (
-            <CBadge color="success" onClick={() => handleMarkAsDelivered(cell.row.original.id)}>Mark as Delivered</CBadge>
-          ) : (
-            <CBadge color="info" onClick={() => window.location.href = `/#/invoice-details/${cell.row.original.id}`}>View</CBadge>
-          )}
+          {
+              cell.row.original.order_status === 0 ? (
+                <CBadge color="danger">Canceled</CBadge>
+              ) : route === 'bookings' && cell.row.original.order_status === 2 ? (
+                <>
+                  <CBadge color="success" onClick={() => handleMarkAsDelivered(cell.row.original.id)}>
+                    Mark as Delivered
+                  </CBadge>
+                  &nbsp;
+                  <CBadge color="danger" onClick={() => {
+                    setDeleteOrder(cell.row.original);
+                    setDeleteModalVisible(true);
+                  }}>
+                    Cancel
+                  </CBadge>
+                </>
+              ) : (
+                <CBadge color="info" onClick={() => window.location.href = `/#/invoice-details/${cell.row.original.id}`}>
+                  View
+                </CBadge>
+              )
+            }
+
         </div>
       ),
     },
-  ];
+  ]
+    
 
   return (
     <CRow>

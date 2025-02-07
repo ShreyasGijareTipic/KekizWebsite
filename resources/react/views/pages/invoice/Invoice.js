@@ -83,6 +83,7 @@ const relatives = isOrderForOthers
 
   const [state, setState] = useState({
     customerName: '',
+    company_id:null,
     customerId: null,
     invoiceType: 1,
     invoiceDate: new Date().toISOString().split('T')[0],
@@ -454,76 +455,11 @@ const relatives = isOrderForOthers
     }
   };
   
-
-  // const handleCustomProductAdd = async (customProduct) => {
-  //   try {
-  //     const userData = JSON.parse(localStorage.getItem("userData"));
-  //     const userToken = userData ? userData.token : null;
-
-  
-  //     if (!userToken) {
-  //       throw new Error("User not authenticated. Please log in.");
-  //     }
-  
-      
-  //     const productData = {
-  //       name: customProduct.name, 
-  //       multiSize: true, 
-  //       sizes: [
-  //         {
-  //           size: customProduct.size, 
-  //           qty: customProduct.qty,
-  //           oPrice: customProduct.price, 
-  //           bPrice: customProduct.bPrice || customProduct.price,
-  //         },
-  //       ],
-  //     };
-  
-  //     // Step 2: Send API Request to Save Product & Sizes
-  //     const response = await fetch("/api/products", {
-  //       method: "POST",
-  //       headers: {
-  //         "Content-Type": "application/json",
-  //         Authorization: `Bearer ${userToken}`, // Include user authentication token
-  //       },
-  //       body: JSON.stringify(productData),
-  //     });
-  
-  //     if (!response.ok) {
-  //       throw new Error("Failed to add product");
-  //     }
-  
-  //     const savedProduct = await response.json(); // Get saved product & sizes from API
-  
-  //     // Step 3: Update State with New Product & Sizes
-  //     setState((prevState) => ({
-  //       ...prevState,
-  //       products: [...prevState.products, savedProduct], // Add product with sizes
-  //       items: [
-  //         ...prevState.items,
-  //         {
-  //           product: savedProduct.id, // Product ID from API
-  //           size: savedProduct.sizes[0].id, // First Size ID
-  //           price: savedProduct.sizes[0].oPrice, // Use API price
-  //           qty: savedProduct.sizes[0].qty, // Use API quantity
-  //           total: savedProduct.sizes[0].oPrice * savedProduct.sizes[0].qty, // Calculate total
-  //         },
-  //       ],
-  //     }));
-  
-  //     setShowCustomOrderModal(false); // Close modal after success
-  //   } catch (error) {
-  //     console.error("Error adding product:", error);
-  //     alert(error.message);
-  //   }
-  // };
-
- 
-  
-
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    const userData = JSON.parse(localStorage.getItem("userData"));
+    const company_id = userData ? userData?.user.company_id : null;
     
     const orderStatus = state.invoiceType === 1 ? 1 : 2; 
 
@@ -536,6 +472,7 @@ const relatives = isOrderForOthers
 
     const orderData = {
         customer_id: state.customerId,
+        company_id:company_id,
         total_amount: state.billedAmount,
         paid_amount: state.paidAmount,
         balance_amount: state.balanceAmount,
