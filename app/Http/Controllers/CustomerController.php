@@ -158,7 +158,7 @@ class CustomerController extends Controller
             ],
             'birthdate' => 'nullable|date',
             'anniversary_date' => 'nullable|date',
-            'show' => 'required',
+            'show' => '',
             'company_id' => 'required',
         ]);
 
@@ -185,7 +185,7 @@ class CustomerController extends Controller
             'mobile' => 'required|string',
             'birthdate' => 'nullable|date',
             'anniversary_date' => 'nullable|date',
-            'show' => 'required',
+            'show' => '',
             'company_id' => 'required',
         ]);
 

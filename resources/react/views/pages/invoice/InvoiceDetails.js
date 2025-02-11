@@ -21,7 +21,7 @@ const InvoiceDetails = () => {
     products: [],
     discount: '',
     amountPaid: 0,
-    paymentMode: '',
+    payment_type: '',
     InvoiceStatus: '',
     finalAmount: 0,
     InvoiceNumber: '',
@@ -73,48 +73,57 @@ const InvoiceDetails = () => {
 
   const fetchOrder = async () => {
     try {
-      const response = await getAPICall('/api/order/' + param.id);
-  
-      // Map order_items into a products array
-      const products = (response.order?.order_items || []).map((item) => ({
-        product_name: item.product?.name || 'N/A', // Fetch product name
-        product_size: item.product_size?.size || 'N/A', // Fetch product size
-        dPrice: item.price || 0, // Product price
-        product_unit: item.product?.unit || '', // Product unit if available
-        dQty: item.qty || 0, // Quantity
-        total_price: item.price * item.qty || 0, // Total price (price x quantity)
-      }));
-  
-      // Update formData with mapped products and other details
-      setFormData({
-        customer: response.order?.customer || {},
-        date: response.order?.invoiceDate || '',
-        products: products, // Use the mapped products array
-        discount: response.order?.discount || '',
-        amountPaid: response.order?.paid_amount || 0,
-        paymentMode: response.order?.order_type === 0 ? 'Cash' : 'Online (UPI/Bank Transfer)',
-        InvoiceStatus: response.order?.order_status === 1
-          ? 'Delivered Order'
-          : response.order?.order_status === 2
-          ? 'Order Pending'
-          : 'Canceled Order',
-        finalAmount: Math.round(response.order?.total_amount) || 0,
-        balance_amount: response.order?.balance_amount || 0,
-        InvoiceNumber: response.order?.id || '',
-        status: response.order?.order_status || '',
-        DeliveryDate: response.order?.delivery_date || '',
-        
-        InvoiceType: response.order?.order_type || '',
-      });
+        const response = await getAPICall('/api/order/' + param.id);
+
+        // ✅ Regular Products
+        const products = (response.order?.order_items || []).map((item) => ({
+            product_name: item.product?.name || 'N/A',
+            product_size: item.product_size?.size || 'N/A',
+            dPrice: item.price || 0,
+            product_unit: item.product?.unit || '',
+            dQty: item.qty || 0,
+            total_price: item.price * item.qty || 0,
+        }));
+
+        // ✅ Custom Products (from `custom_products` field)
+        const customProducts = (response.order?.custom_products || []).map((item) => ({
+            product_name: item.name,  
+            product_size: item.size || 'N/A',  
+            dPrice: item.price,  
+            product_unit: '',  
+            dQty: item.qty,  
+            total_price: item.price * item.qty,  
+        }));
+
+        // ✅ Merge regular and custom products
+        const allProducts = [...products, ...customProducts];
+
+        // Update formData
+        setFormData({
+            customer: response.order?.customer || {},
+            date: response.order?.invoiceDate || '',
+            products: allProducts,  
+            discount: response.order?.discount || '',
+            amountPaid: response.order?.paid_amount || 0,
+            payment_type: response.order?.payment_type === 0 ? 'Cash' : 'Online (UPI/Bank Transfer)',
+            InvoiceStatus: response.order?.order_status === 1
+                ? 'Delivered Order'
+                : response.order?.order_status === 2
+                    ? 'Order Pending'
+                    : 'Canceled Order',
+            finalAmount:response.order?.total_amount || 0,
+            balance_amount: response.order?.balance_amount || 0,
+            InvoiceNumber: response.order?.id || '',
+            status: response.order?.order_status || '',
+            DeliveryDate: response.order?.delivery_date || '',
+            InvoiceType: response.order?.order_type || '',
+        });
     } catch (error) {
-      showToast('danger', 'Error occurred: ' + error);
-      console.error('Error fetching order data:', error);
+        showToast('danger', 'Error occurred: ' + error);
+        console.error('Error fetching order data:', error);
     }
-  };
-  
-  
-  
-  
+};
+
   useEffect(() => {
     fetchOrder();
   }, []); // Fetch order details when component loads
@@ -168,7 +177,7 @@ const InvoiceDetails = () => {
           </div>
           <div className="d-flex flex-row mb-3">
             <div className="flex-fill">
-              <img src={'img/' + ci.logo} width="150" height="150" alt="Logo" />
+              <img src={'img/' + ci.logo} width="100" height="100" alt="Logo" />
             </div>
             <div className="flex-fill"></div>
             <div className="ml-3">
@@ -211,33 +220,34 @@ const InvoiceDetails = () => {
         </tr>
       </thead>
       <tbody>
-        {Array.isArray(formData.products) && formData.products.length > 0 ? (
-          formData.products.map((product, index) => (
+    {Array.isArray(formData.products) && formData.products.length > 0 ? (
+        formData.products.map((product, index) => (
             <tr key={index}>
-              <td className="text-center">{index + 1}</td>
-              <td className="text-center">{product.product_name || 'N/A'}</td>
-              <td className="text-center">{product.product_size || 'N/A'}</td>
-              <td className="text-center">
-                {product.dPrice}&nbsp;₹
-                {product.product_unit ? ` per ${product.product_unit}` : ''}
-              </td>
-              <td className="text-center">
-                {product.dQty}
-                {product.product_unit ? ` ${product.product_unit}` : ''}
-              </td>
-              <td className="text-center">
-                {product.total_price || 0}&nbsp;₹
-              </td>
+                <td className="text-center">{index + 1}</td>
+                <td className="text-center">{product.product_name || 'N/A'}</td>
+                <td className="text-center">{product.product_size || 'N/A'}</td>
+                <td className="text-center">
+                    {product.dPrice}&nbsp;₹
+                    {product.product_unit ? ` per ${product.product_unit}` : ''}
+                </td>
+                <td className="text-center">
+                    {product.dQty}
+                    {product.product_unit ? ` ${product.product_unit}` : ''}
+                </td>
+                <td className="text-center">
+                    {product.total_price || 0}&nbsp;₹
+                </td>
             </tr>
-          ))
-        ) : (
-          <tr>
-            <td colSpan="5" className="text-center text-muted">
-              No products available
+        ))
+    ) : (
+        <tr>
+            <td colSpan="6" className="text-center text-muted">
+                No products available
             </td>
-          </tr>
-        )}
-      </tbody>
+        </tr>
+    )}
+</tbody>
+
     </table>
   </div>
 </div>
@@ -269,8 +279,8 @@ const InvoiceDetails = () => {
                     <td>{formData.balance_amount}&nbsp;₹</td>
                   </tr>
                   <tr>
-                    <td>Payment Mode:</td>
-                    <td>{formData.paymentMode}</td>
+                    <td>Payment Type:</td>
+                    <td>{formData.payment_type}</td>
                   </tr>
                 </tbody>
               </table>
@@ -290,7 +300,7 @@ const InvoiceDetails = () => {
             <div className='flex-fill'>
               <div className="d-flex flex-column align-items-center text-center ">
                 <h6>E-SIGNATURE</h6>
-                <img height="100" width="200" src={'img/' + ci.sign} alt="signature" />
+                <img height="100" width="100" src={'img/' + ci.sign} alt="signature" />
                 <p>Authorized Signature</p>
               </div>
             </div>

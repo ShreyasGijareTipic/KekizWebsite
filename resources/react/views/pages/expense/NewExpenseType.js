@@ -16,10 +16,12 @@ import {
 import { post } from '../../../util/api'
 import { useToast } from '../../common/toast/ToastContext';
 import { useTranslation } from 'react-i18next'
+import { useNavigate } from 'react-router-dom';
 
 const NewExpenseType = () => {
   const [validated, setValidated] = useState(false)
   const { showToast } = useToast();
+  const navigate = useNavigate();
   const { t } = useTranslation("global")
   const [state, setState] = useState({
     name: '',
@@ -53,6 +55,7 @@ const NewExpenseType = () => {
       const resp = await post('/api/expenseType', data)
       if (resp?.id) {
         showToast('success',t("MSG.expense_type_added_successfully_msg"));
+        navigate('/expense/new');
       } else {
         showToast('danger', t("MSG.failed_to_add_expense_type_msg"));
       }

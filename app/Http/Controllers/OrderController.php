@@ -21,20 +21,27 @@ class OrderController extends Controller
             'paid_amount' => 'required|numeric|min:0',
             'balance_amount' => 'required|numeric|min:0',
             'order_status' => 'required|in:0,1,2',
+            'payment_type' => 'in:0,1',
             'company_id'=>'required|integer',
             'invoiceDate' => 'nullable|date',
             'delivery_date' => 'nullable|date',
             'order_type' => 'required|in:1,2',
-            'products' => 'required|array',
-            'products.*.product_id' => 'required|exists:products,id',
-            'products.*.product_size_id' => 'required|exists:product_sizes,id',
-            'products.*.qty' => 'required|integer|min:1',
-            'products.*.price' => 'required|numeric|min:0',
+            'products' => 'array',
+            'products.*.product_id' => 'exists:products,id',
+            'products.*.product_size_id' => 'exists:product_sizes,id',
+            'products.*.qty' => 'integer|min:1',
+            'products.*.price' => 'numeric|min:0',
             'relatives' => 'nullable|array',
             'relatives.*.name' => 'required|string',
             'relatives.*.delivery_for' => 'required|string',
             'relatives.*.birthdate' => 'nullable|date',
             'discount' => 'nullable|numeric',
+            'custom_products' => 'nullable|array',  // Handle custom products as an array
+            'custom_products.*.name' => 'required|string',
+            'custom_products.*.size' => 'nullable|string',
+            'custom_products.*.price' => 'required|numeric',
+            'custom_products.*.qty' => 'required|integer',
+            
         ]);
 
         DB::beginTransaction();

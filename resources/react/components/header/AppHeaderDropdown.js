@@ -1,7 +1,6 @@
 import React from 'react'
 import {
   CAvatar,
-  CBadge,
   CDropdown,
   CDropdownDivider,
   CDropdownHeader,
@@ -41,14 +40,13 @@ const AppHeaderDropdown = () => {
           {user?.email}
         </CDropdownItem>
         
-        <CDropdownHeader className="bg-body-secondary fw-semibold my-2">Settings</CDropdownHeader>
+        {/* <CDropdownHeader className="bg-body-secondary fw-semibold my-2">Settings</CDropdownHeader> */}
         
-        <Link to="/updatepassword" style={{ textDecoration: 'none', color: 'inherit' }}>
-          <CDropdownItem>
-            <CIcon icon={cilSettings} className="me-2" />
-            Password
-          </CDropdownItem>
-        </Link>
+        {/* ✅ Correct way to use Link inside CDropdownItem */}
+        {/* <CDropdownItem as={Link} to="/updatepassword">
+          <CIcon icon={cilSettings} className="me-2" />
+          Password
+        </CDropdownItem> */}
 
         <CDropdownDivider />
         <CDropdownItem onClick={handleLogout}>

@@ -1,44 +1,45 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState } from 'react';
 import {
-  CAlert,
   CButton,
   CCard,
   CCardBody,
   CCardHeader,
   CCol,
   CForm,
-  CFormCheck,
   CFormInput,
   CFormLabel,
   CFormSelect,
   CFormTextarea,
   CRow,
-} from '@coreui/react'
-import { getAPICall, post, put } from '../../../util/api'
-import { useParams } from 'react-router-dom'
-import { getUserData } from '../../../util/session'
+} from '@coreui/react';
+import { getAPICall, put } from '../../../util/api';
+import { useParams } from 'react-router-dom';
+import { getUserData } from '../../../util/session';
 import { useToast } from '../../common/toast/ToastContext';
+import { useNavigate } from 'react-router-dom';
 
 const EditCustomer = () => {
-  const params = useParams()
+  const params = useParams();
   const { showToast } = useToast();
   const [state, setState] = useState({
     name: '',
     mobile: '',
     discount: 0,
     company_id: 0,
-    show: true,
-  })
-  const user = getUserData()
-  //customer
-  const [companyList, setCompanyList] = useState([])
+    address: '',
+    birthdate: '',
+    anniversary_date: ''
+  });
+  const user = getUserData();
+  const [companyList, setCompanyList] = useState([]);
+    const navigate = useNavigate();
+  
 
-  useEffect(()=>{
+  // Fetch customer and company list
+  useEffect(() => {
     try {
       loadCustomerData();
       getAPICall('/api/company').then((resp) => {
-        // Super Admin => All company
-        // Admin => self company
         if (resp) {
           const mappedList = resp.map(itm => ({ label: itm.company_name, value: itm.company_id }));
           if (user.type === 0) {
@@ -47,59 +48,57 @@ const EditCustomer = () => {
             setCompanyList(mappedList.filter(e => e.value === user.company_id));
           }
         }
-      })
+      });
     } catch (error) {
-      showToast('danger', 'Error occured ' + error);
+      showToast('danger', 'Error occurred ' + error);
     }
-  },[]);
+  }, []);
 
   const loadCustomerData = async () => {
     try {
-      const data = await getAPICall('/api/customer/' + params.id)
+      const data = await getAPICall('/api/customer/' + params.id);
       setState({
         id: data.id,
         name: data.name,
         mobile: data.mobile,
         discount: data.discount,
         company_id: data.company_id,
-        show: data.show,
         address: data.address,
-      })
+        birthdate: data.birthdate || '',
+        anniversary_date: data.anniversary_date || ''
+      });
     } catch (error) {
-      showToast('danger', 'Error occured ' + error);
+      showToast('danger', 'Error occurred ' + error);
     }
-  }
+  };
 
   const handleChange = (e) => {
-    const { name, value } = e.target
-    setState({ ...state, [name]: value })
-  }
-
-  const handleCBChange = (e) => {
-    const { name, checked } = e.target
-    setState({ ...state, [name]: checked })
-  }
+    const { name, value } = e.target;
+    setState({ ...state, [name]: value });
+  };
 
   const handleSubmit = async (e) => {
-    e.preventDefault()
-    const form = e.target
+    e.preventDefault();
+    const form = e.target;
     if (!form.checkValidity()) {
-      form.classList.add('was-validated')
-      return
+      form.classList.add('was-validated');
+      return;
     }
 
-    let data = { ...state }
+    let data = { ...state };
     try {
-      const resp = await put('/api/customer/' + data.id, data)
+      const resp = await put('/api/customer/' + data.id, data);
       if (resp?.id) {
-        showToast('success','Customer updated successfully');
+        showToast('success', 'Customer updated successfully');
+        navigate('/customer/all');
+        
       } else {
-        showToast('danger','Error occured, please try again later.');
+        showToast('danger', 'Error occurred, please try again later.');
       }
     } catch (error) {
-      showToast('danger', 'Error occured ' + error);
+      showToast('danger', 'Error occurred ' + error);
     }
-  }
+  };
 
   const handleClear = () => {
     setState({
@@ -107,9 +106,11 @@ const EditCustomer = () => {
       mobile: '',
       discount: 0,
       company_id: state.company_id,
-      show: true,
-    })
-  }
+      address: '',
+      birthdate: '',
+      anniversary_date: ''
+    });
+  };
 
   return (
     <CRow>
@@ -120,6 +121,7 @@ const EditCustomer = () => {
           </CCardHeader>
           <CCardBody>
             <CForm className="needs-validation" noValidate onSubmit={handleSubmit}>
+              {/* Customer Name */}
               <div className="mb-3">
                 <CFormLabel htmlFor="pname">Customer Name</CFormLabel>
                 <CFormInput
@@ -130,11 +132,11 @@ const EditCustomer = () => {
                   value={state.name}
                   onChange={handleChange}
                   required
-                  feedbackInvalid="Please provide name."
-                      feedbackValid="Looks good!"
                 />
                 <div className="invalid-feedback">Name is required</div>
               </div>
+
+              {/* Mobile Number */}
               <div className="mb-3">
                 <CFormLabel htmlFor="plmobile">Mobile Number</CFormLabel>
                 <CFormInput
@@ -145,42 +147,34 @@ const EditCustomer = () => {
                   value={state.mobile}
                   onChange={handleChange}
                   required
-                  feedbackInvalid="Please provide mobile number."
-                      feedbackValid="Looks good!"
                 />
                 <div className="invalid-feedback">Mobile number is required</div>
               </div>
+              {/* Birthdate */}
               <div className="mb-3">
-                <CFormLabel htmlFor="categoryId">Company </CFormLabel>
-                <CFormSelect
-                  aria-label="Select Category"
-                  name="company_id"
-                  value={state.company_id}
-                  options={companyList}
+                <CFormLabel htmlFor="birthdate">Birthdate</CFormLabel>
+                <CFormInput
+                  type="date"
+                  id="birthdate"
+                  name="birthdate"
+                  value={state.birthdate}
                   onChange={handleChange}
-                  required
-                />
-                <div className="invalid-feedback">Please select a company</div>
-              </div>
-              <div className="mb-3">
-                <CFormLabel htmlFor="address">Address</CFormLabel>
-                <CFormTextarea
-                  id="address"
-                  rows={2}
-                  name="address"
-                  value={state.address}
-                  onChange={handleChange}
-                ></CFormTextarea>
-              </div>
-              <div className="mb-3">
-                <CFormCheck
-                  id="flexCheckDefault"
-                  label="Show for invoicing"
-                  name="show"
-                  checked={state.show}
-                  onChange={handleCBChange}
                 />
               </div>
+
+              {/* Anniversary Date */}
+              <div className="mb-3">
+                <CFormLabel htmlFor="anniversary_date">Anniversary Date</CFormLabel>
+                <CFormInput
+                  type="date"
+                  id="anniversary_date"
+                  name="anniversary_date"
+                  value={state.anniversary_date}
+                  onChange={handleChange}
+                />
+              </div>
+
+              {/* Submit and Clear Buttons */}
               <div className="mb-3">
                 <CButton color="success" type="submit">
                   Submit
@@ -195,7 +189,7 @@ const EditCustomer = () => {
         </CCard>
       </CCol>
     </CRow>
-  )
-}
+  );
+};
 
 export default EditCustomer;

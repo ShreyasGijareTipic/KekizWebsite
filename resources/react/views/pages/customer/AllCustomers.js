@@ -13,19 +13,21 @@ const AllCustomers = () => {
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
   const { showToast } = useToast();
 
-  const fetchProducts = async () => {
+  // Fetch customer data
+  const fetchCustomers = async () => {
     try {
       const response = await getAPICall('/api/customer');
       setCustomers(response);
     } catch (error) {
-      showToast('danger', 'Error occured ' + error);
+      showToast('danger', 'Error occurred ' + error);
     }
   };
 
   useEffect(() => {
-    fetchProducts();
+    fetchCustomers();
   }, []);
 
+  // Handle delete confirmation
   const handleDelete = (p) => {
     setDeleteCustomer(p);
     setDeleteModalVisible(true);
@@ -35,9 +37,9 @@ const AllCustomers = () => {
     try {
       await deleteAPICall('/api/customer/' + deleteCustomer.id);
       setDeleteModalVisible(false);
-      fetchProducts();
+      fetchCustomers();
     } catch (error) {
-      showToast('danger', 'Error occured ' + error);
+      showToast('danger', 'Error occurred ' + error);
     }
   };
 
@@ -45,22 +47,12 @@ const AllCustomers = () => {
     navigate('/customer/edit/' + p.id);
   };
 
-
   const columns = [
     { accessorKey: 'index', header: 'Id' },
     { accessorKey: 'name', header: 'Name' },
     { accessorKey: 'mobile', header: 'Mobile' },
-    {
-      accessorKey: 'status',
-      header: 'Status',
-      Cell: ({ cell }) => (
-        cell.row.original.show == 1 ? (
-          <CBadge color="success">Visible</CBadge>
-        ) : (
-          <CBadge color="danger">Hidden</CBadge>
-        )
-      ),
-    },
+    { accessorKey: 'birthdate', header: 'Birthdate' },
+    { accessorKey: 'anniversary_date', header: 'Anniversary Date' },
     {
       accessorKey: 'actions',
       header: 'Actions',
@@ -89,6 +81,8 @@ const AllCustomers = () => {
   const data = customers.map((p, index) => ({
     ...p,
     index: index + 1,
+    birthdate: p.birthdate || 'N/A',
+    anniversary_date: p.anniversary_date || 'N/A',
   }));
 
   return (

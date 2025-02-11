@@ -6,10 +6,7 @@ const Dashboard = () => {
   const [dashboardData, setDashboardData] = useState({
     todays_birthdays: { customers: [], relatives: [] },
     todays_anniversaries: [],
-    upcoming_birthdays: {
-      customers: [],
-      relatives: [],
-    },
+    upcoming_birthdays: { customers: [], relatives: [] },
     upcoming_anniversaries: [],
   });
 
@@ -38,7 +35,6 @@ const Dashboard = () => {
     };
 
     window.addEventListener('resize', handleResize);
-
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
@@ -51,28 +47,27 @@ const Dashboard = () => {
   };
 
   const getMobileNumber = (event) => {
-    if (event.customer) {
-      return event.customer.mobile;
-    }
-    return event.mobile;
+    return event.customer ? event.customer.mobile : event.mobile;
+  };
+
+  const formatName = (event) => {
+    return event.relation ? `${event.relation} - ${event.customer.name}` : event.name;
   };
 
   const isMobile = windowWidth <= 768;
 
   return (
     <div style={dashboardContainer}>
-      {/* Top Section - Today's Events */}
       <div style={isMobile ? mobileTwoColumnGrid : twoColumnGrid}>
-        {/* Today's Birthdays */}
         <div style={cardStyle}>
           <h3>🎂 Today's Birthdays</h3>
           <div style={scrollableContent}>
-            {dashboardData.todays_birthdays.customers.length > 0 ? (
-              dashboardData.todays_birthdays.customers.map((event, index) => (
+            {dashboardData.todays_birthdays.customers.length > 0 || dashboardData.todays_birthdays.relatives.length > 0 ? (
+              dashboardData.todays_birthdays.customers.concat(dashboardData.todays_birthdays.relatives).map((event, index) => (
                 <div key={index} style={eventItem}>
                   <CIcon icon={cilBirthdayCake} style={iconStyle} />
                   <p>
-                    <strong>{event.name}</strong> - {event.birthdate}
+                    <strong>{formatName(event)}</strong> - {event.birthdate}
                   </p>
                   <a className="btn btn-outline-success btn-sm" href={`sms:+91${getMobileNumber(event)}?body=${generateMessage(event, 'birthday')}`}>
                     <CIcon icon={cilChatBubble} />
@@ -85,7 +80,6 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {/* Today's Anniversaries */}
         <div style={cardStyle}>
           <h3>💖 Today's Anniversaries</h3>
           <div style={scrollableContent}>
@@ -94,7 +88,7 @@ const Dashboard = () => {
                 <div key={index} style={eventItem}>
                   <CIcon icon={cilHeart} style={iconStyle} />
                   <p>
-                    <strong>{event.name}</strong> - {event.anniversary_date}
+                    <strong>{formatName(event)}</strong> - {event.anniversary_date}
                   </p>
                   <a className="btn btn-outline-success btn-sm" href={`sms:+91${getMobileNumber(event)}?body=${generateMessage(event, 'anniversary')}`}>
                     <CIcon icon={cilChatBubble} />
@@ -108,40 +102,35 @@ const Dashboard = () => {
         </div>
       </div>
 
-      {/* Bottom Section - Upcoming Events */}
       <div style={isMobile ? mobileTwoColumnGrid : twoColumnGrid}>
-        {/* Upcoming Birthdays */}
         <div style={cardStyle}>
           <h3>🎈 Upcoming Birthdays</h3>
           <div style={scrollableContent}>
             {dashboardData.upcoming_birthdays.customers.length > 0 || dashboardData.upcoming_birthdays.relatives.length > 0 ? (
-              <>
-                {dashboardData.upcoming_birthdays.customers.concat(dashboardData.upcoming_birthdays.relatives).map((birthday, index) => (
-                  <div key={index} style={eventItem}>
-                    <CIcon icon={cilBirthdayCake} style={iconStyle} />
-                    <p><strong>{birthday.name}</strong> - {birthday.birthdate}</p>
-                    <a className="btn btn-outline-success btn-sm" href={`sms:+91${getMobileNumber(birthday)}?body=${generateUpcomingMessage('Birthday', birthday.name, birthday.birthdate)}`}>
-                      <CIcon icon={cilChatBubble} />
-                    </a>
-                  </div>
-                ))}
-              </>
+              dashboardData.upcoming_birthdays.customers.concat(dashboardData.upcoming_birthdays.relatives).map((event, index) => (
+                <div key={index} style={eventItem}>
+                  <CIcon icon={cilBirthdayCake} style={iconStyle} />
+                  <p><strong>{formatName(event)}</strong> - {event.birthdate}</p>
+                  <a className="btn btn-outline-success btn-sm" href={`sms:+91${getMobileNumber(event)}?body=${generateUpcomingMessage('Birthday', event.name, event.birthdate)}`}>
+                    <CIcon icon={cilChatBubble} />
+                  </a>
+                </div>
+              ))
             ) : (
               <p>No upcoming birthdays.</p>
             )}
           </div>
         </div>
 
-        {/* Upcoming Anniversaries */}
         <div style={cardStyle}>
           <h3>✨ Upcoming Anniversaries</h3>
           <div style={scrollableContent}>
             {dashboardData.upcoming_anniversaries.length > 0 ? (
-              dashboardData.upcoming_anniversaries.map((anniversary, index) => (
+              dashboardData.upcoming_anniversaries.map((event, index) => (
                 <div key={index} style={eventItem}>
                   <CIcon icon={cilHeart} style={iconStyle} />
-                  <p><strong>{anniversary.name}</strong> - {anniversary.anniversary_date}</p>
-                  <a className="btn btn-outline-success btn-sm" href={`sms:+91${getMobileNumber(anniversary)}?body=${generateUpcomingMessage('Anniversary', anniversary.name, anniversary.anniversary_date)}`}>
+                  <p><strong>{formatName(event)}</strong> - {event.anniversary_date}</p>
+                  <a className="btn btn-outline-success btn-sm" href={`sms:+91${getMobileNumber(event)}?body=${generateUpcomingMessage('Anniversary', event.name, event.anniversary_date)}`}>
                     <CIcon icon={cilChatBubble} />
                   </a>
                 </div>
@@ -156,7 +145,6 @@ const Dashboard = () => {
   );
 };
 
-// 🎨 Styles
 const dashboardContainer = {
   display: 'flex',
   flexDirection: 'column',

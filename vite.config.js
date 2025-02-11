@@ -149,9 +149,9 @@ export default defineConfig(({ mode }) => {
         },
         // Manifest settings - these will appear in the generated manifest.webmanifest
         manifest: {
-          name: "Samarth Nursery",
-          short_name: "Samarth Nursery",
-          description: "An app to Samarth Nursery.",
+          name: "Kekiz Cake Shop",
+          short_name: "Kekiz Cake Shop",
+          description: "An app to Kekiz Cake Shop.",
           theme_color: "#171717",
           background_color: "#e8ebf2",
           display: "standalone",

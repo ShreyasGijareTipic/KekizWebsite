@@ -376,23 +376,23 @@ export default function fetchNavItems(t1){
           ],
         },
         
-        {
-          component: CNavGroup,
-          name: t("LABELS.user_management"),
-          icon: <CIcon icon={cilGroup} customClassName="nav-icon" />,
-          items: [
-            {
-              component: CNavItem,
-              name: t("LABELS.all_Users"),
-              to: 'usermanagement/all-users',
-            },
-            {
-              component: CNavItem,
-              name: t("LABELS.create_user"),
-              to: 'usermanagement/create-user',
-            },
-          ],
-        },
+        // {
+        //   component: CNavGroup,
+        //   name: t("LABELS.user_management"),
+        //   icon: <CIcon icon={cilGroup} customClassName="nav-icon" />,
+        //   items: [
+        //     {
+        //       component: CNavItem,
+        //       name: t("LABELS.all_Users"),
+        //       to: 'usermanagement/all-users',
+        //     },
+        //     {
+        //       component: CNavItem,
+        //       name: t("LABELS.create_user"),
+        //       to: 'usermanagement/create-user',
+        //     },
+        //   ],
+        // },
       ])
     }else{
       _nav.push(...[

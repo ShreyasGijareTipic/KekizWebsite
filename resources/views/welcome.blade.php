@@ -49,7 +49,7 @@
     <link rel="apple-touch-startup-image" href="apple-splash-640-1136.jpg" media="(device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)">
     <link rel="apple-touch-startup-image" href="apple-splash-1136-640.jpg" media="(device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)">
         <!-- For IOS END -->
-    <link rel="shortcut icon" href="samarthNursuryLogo.ico" />
+    <link rel="shortcut icon" href="kekizLogo.ico" />
     <link rel="manifest" href="/build/manifest.webmanifest">
     <script src="/build/registerSW.js"></script>
     <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests">

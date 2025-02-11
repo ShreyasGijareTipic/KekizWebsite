@@ -81,6 +81,7 @@ const relatives = isOrderForOthers
   ? [{ name: deliveryName, relation: deliveryFor, birthdate: deliveryBirthdate }]
   : [];
 
+  
   const [state, setState] = useState({
     customerName: '',
     company_id:null,
@@ -92,13 +93,14 @@ const relatives = isOrderForOthers
     deliveryName: '',
     deliveryBirthdate: new Date().toISOString().split('T')[0],
     items: [{ product: '', size: '', price: 0, qty: 1 }],
-    relative:[] ,  // Array to hold relative data (optional)
+    relative:[] ,
     totalAmount: 0,
     finalAmount: 0,
     balanceAmount: 0,
     discount: 0,
     paidAmount: 0,
-    orderStatus: 1,  // Adjust order status as per your requirement
+    orderStatus: 1,
+    payment_type : 0
   });
   const handleOrderForOthersChange = (e) => {
     setIsOrderForOthers(e.target.checked);
@@ -145,10 +147,8 @@ const relatives = isOrderForOthers
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setState((prevState) => ({
-      ...prevState,
-      [name]: value,
-    }));
+    if (name === "paidAmount" && value < 0) return; // Prevent negative values
+    setState((prev) => ({ ...prev, [name]: value }));
   };
 
   // Update totals on state change
@@ -164,10 +164,16 @@ const relatives = isOrderForOthers
     calculateBalanceAmount();
   }, [state.billedAmount, state.paidAmount]);
   
+  // const calculateTotalAmount = () => {
+  //   const total = state.items.reduce((acc, item) => acc + item.qty * item.price, 0);
+  //   setState((prevState) => ({ ...prevState, totalAmount: total }));
+  // };
   const calculateTotalAmount = () => {
-    const total = state.items.reduce((acc, item) => acc + item.qty * item.price, 0);
-    setState((prevState) => ({ ...prevState, totalAmount: total }));
+    const total = state.items.reduce((acc, item) => acc + (item.total || 0), 0);
+    console.log("🔄 Calculated Total:", total);  // Debugging log
+    setState((prevState) => ({ ...prevState, totalAmount: total, finalAmount: total }));
   };
+  
   
   const calculateBilledAmount = () => {
     const discountAmount = (state.totalAmount * state.discount) / 100;
@@ -182,8 +188,46 @@ const relatives = isOrderForOthers
   
 
 
+  // const handleProductChange = (index, productId) => {
+  //   if (!state.products) return; 
+  //   const product = state.products.find((p) => p.id === productId);
+  //   const updatedItems = [...state.items];
+  //   updatedItems[index] = {
+  //     ...updatedItems[index],
+  //     product: productId,
+  //     size: '',
+  //     price: product?.price || 0,
+  //     total: 0,
+  //   };
+  //   setState((prevState) => ({ ...prevState, items: updatedItems }));
+  // };
+  
+  
+  // const handleSizeChange = (index, sizeId) => {
+  //   const product = state.products.find((p) => p.id === state.items[index].product);
+  //   const size = product?.sizes.find((s) => s.id === sizeId);
+  //   const updatedItems = [...state.items];
+  //   updatedItems[index] = {
+  //     ...updatedItems[index],
+  //     size: sizeId,
+  //     price: size?.price || 0,
+  //     total: updatedItems[index].qty * (size?.price || 0),
+  //   };
+  //   setState((prevState) => ({ ...prevState, items: updatedItems }));
+  // };
+  
+  // const handleQtyChange = (index, qty) => {
+  //   const updatedItems = [...state.items];
+  //   updatedItems[index] = {
+  //     ...updatedItems[index],
+  //     qty,
+  //     total: qty * updatedItems[index].price,
+  //   };
+  //   setState((prevState) => ({ ...prevState, items: updatedItems }));
+  // };
+
   const handleProductChange = (index, productId) => {
-    if (!state.products) return; // Add this check
+    if (!state.products) return;
     const product = state.products.find((p) => p.id === productId);
     const updatedItems = [...state.items];
     updatedItems[index] = {
@@ -191,11 +235,13 @@ const relatives = isOrderForOthers
       product: productId,
       size: '',
       price: product?.price || 0,
-      total: 0,
+      total: (product?.price || 0) * updatedItems[index].qty,
     };
-    setState((prevState) => ({ ...prevState, items: updatedItems }));
-  };
   
+    setState((prevState) => ({ ...prevState, items: updatedItems }), () => {
+      calculateTotalAmount(); // 🔥 Call immediately after state update
+    });
+  };
   
   const handleSizeChange = (index, sizeId) => {
     const product = state.products.find((p) => p.id === state.items[index].product);
@@ -207,7 +253,10 @@ const relatives = isOrderForOthers
       price: size?.price || 0,
       total: updatedItems[index].qty * (size?.price || 0),
     };
-    setState((prevState) => ({ ...prevState, items: updatedItems }));
+  
+    setState((prevState) => ({ ...prevState, items: updatedItems }), () => {
+      calculateTotalAmount(); // 🔥 Call immediately after state update
+    });
   };
   
   const handleQtyChange = (index, qty) => {
@@ -217,8 +266,12 @@ const relatives = isOrderForOthers
       qty,
       total: qty * updatedItems[index].price,
     };
-    setState((prevState) => ({ ...prevState, items: updatedItems }));
+  
+    setState((prevState) => ({ ...prevState, items: updatedItems }), () => {
+      calculateTotalAmount(); // 🔥 Call immediately after state update
+    });
   };
+  
   
 
   // Add new row
@@ -323,213 +376,131 @@ const relatives = isOrderForOthers
   };
 
 
-  // const handleCustomProductAdd = (customProduct) => {
-  //   // Create a custom product entry
-  //   const newProduct = {
-  //     id: Date.now(), // Unique ID for the custom product
-  //     name: customProduct.name, // Custom product name
-  //     sizes: [
-  //       {
-  //         id: Date.now(), // Unique ID for the custom size
-  //         name: customProduct.size, // Custom size name
-  //         price: customProduct.price, // Custom size price
-  //       },
-  //     ],
-  //   };
-  
-  //   // Add the custom product to the products array
-  //   setState((prevState) => ({
-  //     ...prevState,
-  //     products: [...prevState.products, newProduct], // Add to product list
-  //     items: [
-  //       ...prevState.items,
-  //       {
-  //         product: newProduct.id, // Reference custom product ID
-  //         size: newProduct.sizes[0].id, // Reference custom size ID
-  //         price: customProduct.price, // Use custom price
-  //         qty: customProduct.qty, // Use custom quantity
-  //         total: customProduct.price * customProduct.qty, // Calculate total
-  //       },
-  //     ],
-  //   }));
-  
-  //   // Close the modal
-  //   setShowCustomOrderModal(false);
-  // };
-  const handleCustomProductAdd = async (customProduct) => {
-    try {
-      // Step 1: Fetch user data and token from localStorage
-      const userData = JSON.parse(localStorage.getItem("userData"));
-      const userToken = userData ? userData.token : null;
-  
-      if (!userToken) {
-        throw new Error("User not authenticated. Please log in.");
-      }
-  
-      // Prepare product data for API request
-      const productData = {
-        name: customProduct.name, 
-        multiSize: true, 
-        sizes: [
-          {
-            size: customProduct.size, 
-            qty: customProduct.qty,
-            oPrice: customProduct.price, // Original price
-            bPrice: customProduct.bPrice || customProduct.price, // If bPrice is not provided, fallback to oPrice
-          },
-        ],
-      };
-  
-      // Step 2: Optimistically update the state (before API request)
-      const newProduct = {
-        id: Date.now(), // Unique ID for the custom product
-        name: customProduct.name, 
-        sizes: [
-          {
-            id: Date.now(), // Unique ID for the custom size
-            size: customProduct.size, 
-            oPrice: customProduct.price, 
-            bPrice: customProduct.bPrice || customProduct.price, 
-            qty: customProduct.qty,
-          },
-        ],
-      };
-  
-      // Optimistically update state for UI
-      setState((prevState) => ({
-        ...prevState,
-        products: [...prevState.products, newProduct], // Add product
-        items: [
-          ...prevState.items,
-          {
-            product: newProduct.id,
-            size: newProduct.sizes[0].id,
-            price: newProduct.sizes[0].oPrice,
-            qty: newProduct.sizes[0].qty,
-            total: newProduct.sizes[0].oPrice * newProduct.sizes[0].qty,
-          },
-        ],
-      }));
-  
-      // Step 3: Send API Request to Save Product & Sizes
-      const response = await fetch("/api/products", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${userToken}`,
-        },
-        body: JSON.stringify(productData),
-      });
-  
-      if (!response.ok) {
-        throw new Error("Failed to add product");
-      }
-  
-      // Step 4: Update the state with the actual response from the API
-      const savedProduct = await response.json();
-  
-      setState((prevState) => {
-        const updatedProducts = prevState.products.map(product =>
-          product.id === newProduct.id ? savedProduct : product
-        );
-  
-        const updatedItems = prevState.items.map(item =>
-          item.product === newProduct.id
-            ? { ...item, product: savedProduct.id, size: savedProduct.sizes[0].id }
-            : item
-        );
-  
-        return {
-          ...prevState,
-          products: updatedProducts,
-          items: updatedItems,
-        };
-      });
-  
-      // Close modal after success
-      setShowCustomOrderModal(false);
-  
-    } catch (error) {
-      console.error("Error adding product:", error);
-      alert(error.message); // Display an alert if there was an error
-    }
+const handleCustomProductAdd = (customProduct) => {
+  if (!customProduct.name || customProduct.name.trim() === "") {
+    alert("Custom product name is required!");
+    return;
+  }
+  if (!customProduct.size || customProduct.size.trim() === "") {
+    alert("Custom product size is required!");
+    return;
+  }
+
+  const newProduct = {
+    id: Date.now(),
+    name: customProduct.name,
+    size: customProduct.size,
+    price: customProduct.price,
+    qty: customProduct.qty,
   };
-  
-  const handleSubmit = async (e) => {
-    e.preventDefault();
 
-    const userData = JSON.parse(localStorage.getItem("userData"));
-    const company_id = userData ? userData?.user.company_id : null;
-    
-    const orderStatus = state.invoiceType === 1 ? 1 : 2; 
+  setState((prevState) => {
+    let updatedItems = [...prevState.items];
 
-    
-    console.log("Form State:", state);
-  
-    const relativesData = isOrderForOthers && deliveryName && deliveryFor
-        ? [{ name: deliveryName, delivery_for: deliveryFor, birthdate: deliveryBirthdate || null }]
-        : [];
-
-    const orderData = {
-        customer_id: state.customerId,
-        company_id:company_id,
-        total_amount: state.billedAmount,
-        paid_amount: state.paidAmount,
-        balance_amount: state.balanceAmount,
-        order_status: orderStatus,
-        discount:state.discount,
-        delivery_date:state.deliveryDate,
-        invoiceDate: state.invoiceDate || null,
-        order_type: state.invoiceType,
-        products: state.items.map(item => ({
-            product_id: item.product,
-            product_size_id: item.size,
-            qty: item.qty,
-            price: item.price,
-        })),
-        relatives: relativesData.length > 0 ? relativesData : [],
-    };
-
-    // Debug Step 2: Log final request data before sending
-    console.log("🚀 Sending Order Data:", JSON.stringify(orderData, null, 2));
-
-    try {
-        const response = await fetch('/api/orders', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(orderData),
-        });
-
-        // Debug Step 3: Log response status
-        console.log("🟡 Response Status:", response.status);
-
-        if (!response.ok) {
-            throw new Error(`HTTP error! Status: ${response.status}`);
-        }
-
-        const data = await response.json();
-        
-        // Debug Step 4: Log response data
-        console.log("✅ Order created successfully:", data);
-
-        // ✅ Navigate only if order ID exists
-        if (data.order && data.order.id) {
-            console.log("🔀 Redirecting to Invoice Page...");
-            navigate(`/invoice-details/${data.order.id}`);
-        } else {
-            console.error("❌ Order ID missing in response!");
-        }
-
-    } catch (error) {
-        console.error("❌ Fetch Error:", error);
+    if (updatedItems.length === 1 && !updatedItems[0].product) {
+      // ✅ Update first row instead of adding a new one
+      updatedItems[0] = {
+        ...newProduct, // ✅ Directly assign new product properties
+        product: newProduct.id, 
+        total: newProduct.price * newProduct.qty,
+      };
+    } else {
+      // ✅ Otherwise, add a new row
+      updatedItems.push({
+        ...newProduct,
+        product: newProduct.id,
+        total: newProduct.price * newProduct.qty,
+      });
     }
+
+    return { ...prevState, items: updatedItems };
+  });
+
+  setShowCustomOrderModal(false);
 };
 
 
-  
 
+
+const handleSubmit = async (e) => {
+  e.preventDefault();
+
+  const userData = JSON.parse(localStorage.getItem("userData"));
+  const company_id = userData ? userData?.user.company_id : null;
+  const orderStatus = state.invoiceType === 1 ? 1 : 2; 
+
+  console.log("🚀 Form State Before Submission:", state);
+
+  const customProducts = state.items
+      .filter(item => item.product.toString().length > 10)
+      .map(item => ({
+          name: item.name || "Custom Product",  
+          size: typeof item.size === "string" ? item.size : "Custom Size",
+          price: item.price,  
+          qty: item.qty,  
+      }));
+
+  const regularProducts = state.items
+      .filter(item => item.product.toString().length <= 10)
+      .map(item => ({
+          product_id: item.product,
+          product_size_id: typeof item.size === "number" ? item.size : null,
+          qty: item.qty,
+          price: item.price,
+      }));
+
+  // 🛑 Prevent submission if no products exist
+  if (regularProducts.length === 0 && customProducts.length === 0) {
+      alert("You must add at least one product before submitting the order.");
+      return;
+  }
+
+  const orderData = {
+      customer_id: state.customerId,
+      company_id: company_id,
+      total_amount: state.billedAmount,
+      paid_amount: state.paidAmount,
+      balance_amount: state.balanceAmount,
+      order_status: orderStatus,
+      discount: state.discount,
+      delivery_date: state.deliveryDate,
+      invoiceDate: state.invoiceDate || null,
+      order_type: state.invoiceType,
+      payment_type: state.payment_type,  // ✅ Added paymentType (0 = Cash, 1 = Online/UPI)
+      products: regularProducts,  
+      custom_products: customProducts.length > 0 ? customProducts : null,
+  };
+
+  console.log("📦 Sending Order Data:", JSON.stringify(orderData, null, 2));
+
+  try {
+      const response = await fetch('/api/orders', { 
+          method: 'POST',
+          headers: {
+              'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(orderData),
+      });
+
+      console.log("🟡 Response Status:", response.status);
+
+      if (!response.ok) {
+          throw new Error(`HTTP error! Status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log("✅ Order created successfully:", data);
+
+      if (data.order && data.order.id) {
+          console.log("🔀 Redirecting to Invoice Page...");
+          navigate(`/invoice-details/${data.order.id}`);
+      } else {
+          console.error("❌ Order ID missing in response!");
+      }
+  } catch (error) {
+      console.error("❌ Fetch Error:", error);
+  }
+};
 
   const handleClear = () => {
     setState({
@@ -685,6 +656,7 @@ const relatives = isOrderForOthers
                       name="invoiceDate"
                       value={state.invoiceDate}
                       onChange={handleChange}
+                      min={new Date().toISOString().split('T')[0]} 
                       required
                       feedbackInvalid={t('invoice.select_date')}
                     />
@@ -699,6 +671,7 @@ const relatives = isOrderForOthers
                         id="deliveryDate"
                         placeholder={t('invoice.pune')}
                         name="deliveryDate"
+                        min={new Date().toISOString().split('T')[0]} 
                         value={state.deliveryDate}
                         onChange={handleChange}
                         required={state.invoiceType == 2}
@@ -731,7 +704,7 @@ const relatives = isOrderForOthers
                         value={deliveryFor}
                         onChange={handleDeliveryForChange}
                       >
-                        <option value="">{t('invoice.select')}</option>
+                        <option value="">Select</option>
                         <option value="spouse">Spouse</option>
                         <option value="family">Family</option>
                         <option value="friend">Friend</option>
@@ -747,7 +720,7 @@ const relatives = isOrderForOthers
                         name="deliveryName"
                         value={deliveryName}
                         onChange={handleDeliveryNameChange}
-                        placeholder={t('invoice.enter_name')}
+                        placeholder="Please Enter Name"
                       />
                     </div>
                   </div>
@@ -766,93 +739,200 @@ const relatives = isOrderForOthers
                 </div>
               </>
             )}
-              <div className="table-responsive mb-3">
-                <table className="table">
-                  <thead>
-                    <tr>
-                      <th>Product</th>
-                      <th>Size</th>
-                      <th>Price</th>
-                      <th>Qty.</th>
-                      <th>Action</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                  {state.items.length > 0 && state.items.map((item, index) => {
-  const selectedProduct = Array.isArray(state.products) ? state.products.find((p) => p.id === item.product) : null;
-  const sizes = selectedProduct ? selectedProduct.sizes : []; // Fallback if no product found
+            
+{/* Desktop View (Table Format) */}
+<div className="d-none d-md-block table-responsive">
+  <table className="table table-bordered">
+    <thead>
+      <tr>
+        <th>Product</th>
+        <th>Size</th>
+        <th>Price</th>
+        <th>Quantity</th>
+        <th>Total Price</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {Array.isArray(state.items) && state.items.length > 0 ? (
+        state.items.map((item, index) => {
+          const selectedProduct = Array.isArray(state.products)
+            ? state.products.find((p) => p.id === item.product)
+            : null;
+          const sizes = selectedProduct ? selectedProduct.sizes : [];
 
-  return (
-    <tr key={index}>
-      {/* Product Selection */}
-      <td>
-        <CFormSelect
-          value={item.product}
-          onChange={(e) => handleProductChange(index, parseInt(e.target.value))}
-        >
-          <option value="">Select Product</option>
-          {Array.isArray(state.products) && state.products.map((product) => (
-            <option key={product.id} value={product.id}>
-              {product.name}
-            </option>
-          ))}
-        </CFormSelect>
-      </td>
+          return (
+            <tr key={index}>
+              <td>
+                {item.name ? (
+                  <span>{item.name}</span>
+                ) : (
+                  <CFormSelect
+                    value={item.product || ""}
+                    onChange={(e) => handleProductChange(index, parseInt(e.target.value))}
+                  >
+                    <option value="">Select Product</option>
+                    {Array.isArray(state.products) &&
+                      state.products.map((product) => (
+                        <option key={product.id} value={product.id}>
+                          {product.name}
+                        </option>
+                      ))}
+                  </CFormSelect>
+                )}
+              </td>
 
-      {/* Size Selection */}
-      <td>
-        <CFormSelect
-          value={item.size}
-          onChange={(e) => handleSizeChange(index, parseInt(e.target.value))}
-          disabled={!item.product} // Disable if no product is selected
-        >
-          <option value="">Select Size</option>
-          {sizes.map((size) => (
-            <option key={size.id} value={size.id}>
-              {size.name} {/* Display size and price */}
-            </option>
-          ))}
-        </CFormSelect>
-      </td>
+              <td>
+                {item.name ? (
+                  <span>{typeof item.size === "string" ? item.size : sizes.find((size) => size.id === item.size)?.name || "No Size Selected"}</span>
+                ) : (
+                  <CFormSelect
+                    value={item.size || ""}
+                    onChange={(e) => handleSizeChange(index, parseInt(e.target.value))}
+                    disabled={!item.product || sizes.length === 0}
+                  >
+                    <option value="">Select Size</option>
+                    {sizes.map((size) => (
+                      <option key={size.id} value={size.id}>
+                        {size.name}
+                      </option>
+                    ))}
+                  </CFormSelect>
+                )}
+              </td>
 
-      {/* Price Column */}
-      <td>
-        {item.price || '-'} {/* Display price or fallback if no price */}
-      </td>
+              <td>{item.price || '-'}</td>
+              <td>
+                <CFormInput
+                  type="number"
+                  value={item.qty === 0 ? "" : item.qty} // Show blank when clicked
+                  placeholder="0" // Display 0 as a hint
+                  onFocus={(e) => e.target.value === "0" && (e.target.value = "")} // Clear if it's 0
+                  onBlur={(e) => e.target.value === "" && handleQtyChange(index, 0)} // Reset to 0 if left blank
+                  onChange={(e) => handleQtyChange(index, parseInt(e.target.value, 10) || 0)}
+                />
+              </td>
 
-      {/* Quantity Column */}
-      <td>
-        <CFormInput
-          type="number"
-          value={item.qty}
-          onChange={(e) => handleQtyChange(index, parseInt(e.target.value, 10))}
-        />
-      </td>
+              <td>{(item.price * (item.qty || 1)).toFixed(2)} ₹</td>
+              <td>
+                <div className="d-flex">
+                  {state.items.length > 1 && (
+                    <CButton color="danger" onClick={() => removeRow(index)}>
+                      <CIcon icon={cilDelete} size="sm" />
+                    </CButton>
+                  )}
+                  {index === state.items.length - 1 && (
+                    <CButton color="success" onClick={addNewRow}>
+                      <CIcon icon={cilPlus} size="sm" />
+                    </CButton>
+                  )}
+                </div>
+              </td>
+            </tr>
+          );
+        })
+      ) : (
+        <tr>
+          <td colSpan="6" className="text-center">No items found</td>
+        </tr>
+      )}
+    </tbody>
+  </table>
+</div>
 
-      {/* Action Column */}
-      <td>
-        <div className="d-flex">
-          {state.items.length > 1 && (
-            <CButton color="danger" onClick={() => removeRow(index)}>
-              <CIcon icon={cilDelete} size="sm" />
-            </CButton>
-          )}
-          {index === state.items.length - 1 && (
-            <CButton color="success" onClick={addNewRow}>
-              <CIcon icon={cilPlus} size="sm" />
-            </CButton>
-          )}
+{/* Mobile View (Stacked Layout) */}
+<div className="d-block d-md-none">
+  {Array.isArray(state.items) && state.items.length > 0 ? (
+    state.items.map((item, index) => {
+      const selectedProduct = Array.isArray(state.products)
+        ? state.products.find((p) => p.id === item.product)
+        : null;
+      const sizes = selectedProduct ? selectedProduct.sizes : [];
+
+      return (
+        <div key={index} className="bg-light rounded p-3 my-3">
+          <div className="d-flex justify-content-between">
+            <div style={{ flex: 1 }}>
+              <label className="font-weight-bold">Product:</label>
+              {item.name ? (
+                <p>{item.name}</p>
+              ) : (
+                <CFormSelect
+                  value={item.product || ""}
+                  onChange={(e) => handleProductChange(index, parseInt(e.target.value))}
+                >
+                  <option value="">Select Product</option>
+                  {Array.isArray(state.products) &&
+                    state.products.map((product) => (
+                      <option key={product.id} value={product.id}>
+                        {product.name}
+                      </option>
+                    ))}
+                </CFormSelect>
+              )}
+            </div>
+            <div style={{ flex: 1, marginLeft: '10px' }}>
+              <label className="font-weight-bold">Size:</label>
+              {item.name ? (
+                <p>{typeof item.size === "string" ? item.size : sizes.find((size) => size.id === item.size)?.name || "No Size Selected"}</p>
+              ) : (
+                <CFormSelect
+                  value={item.size || ""}
+                  onChange={(e) => handleSizeChange(index, parseInt(e.target.value))}
+                  disabled={!item.product || sizes.length === 0}
+                >
+                  <option value="">Select Size</option>
+                  {sizes.map((size) => (
+                    <option key={size.id} value={size.id}>
+                      {size.name}
+                    </option>
+                  ))}
+                </CFormSelect>
+              )}
+            </div>
+          </div>
+
+          <div className="d-flex justify-content-between align-items-center mt-3">
+            <div style={{ flex: 1 }}>
+              <label className="font-weight-bold">Price:</label>
+              <p>{item.price || "-"}</p>
+            </div>
+            <div style={{ flex: 1, marginLeft: '10px' }}>
+              <label className="font-weight-bold">Quantity:</label>
+              <CFormInput
+                type="number"
+                value={item.qty === 0 ? "" : item.qty} // Show blank when clicked
+                placeholder="0" // Display 0 as a hint
+                onFocus={(e) => e.target.value === "0" && (e.target.value = "")} // Clear if it's 0
+                onBlur={(e) => e.target.value === "" && handleQtyChange(index, 0)} // Reset to 0 if left blank
+                onChange={(e) => handleQtyChange(index, parseInt(e.target.value, 10) || 0)}
+                style={{ width: '80px', padding: '5px', fontSize: '14px' }}
+              />
+            </div>
+
+            <div className="d-flex justify-content-end mt-3">
+              {state.items.length > 1 && (
+                <CButton color="danger" onClick={() => removeRow(index)}>
+                  <CIcon icon={cilDelete} size="sm" />
+                </CButton>
+              )}
+              {index === state.items.length - 1 && (
+                <CButton color="success" onClick={addNewRow} className="ms-2">
+                  <CIcon icon={cilPlus} size="sm" />
+                </CButton>
+              )}
+            </div>
+          </div>
         </div>
-      </td>
-    </tr>
-  );
-})}
+      );
+    })
+  ) : (
+    <div className="text-center">No items found</div>
+  )}
+</div>
 
 
-</tbody>
-                </table>
-                
-              </div>
+
 
               <div className="d-flex justify-content-between" style={{marginBottom: '13px'}}>
                 <CButton color="primary" onClick={() => setShowCustomOrderModal(true)}>
@@ -871,11 +951,11 @@ const relatives = isOrderForOthers
               <div>
                 <CRow>
                   <CCol xs={12} md={6}>
-                    <CFormLabel htmlFor="paymentType">{t('invoice.payment_type')}</CFormLabel>
+                    <CFormLabel htmlFor="payment_type">Payment Type</CFormLabel>
                     <CFormSelect
-                      id="paymentType"
-                      name="paymentType"
-                      value={state.paymentType}
+                      id="payment_type"
+                      name="payment_type"
+                      value={state.payment_type}
                       onChange={handleChange}
                     >
                       <option value={0}>{t('invoice.cash')}</option>
@@ -906,6 +986,7 @@ const relatives = isOrderForOthers
                   <div className="mb-3">
                     <CFormLabel htmlFor="paidAmount">{t('invoice.paid_amount')} (Rs)</CFormLabel>
                     <CFormInput
+                      min="0"
                       type="number"
                       id="paidAmount"
                       placeholder=""
@@ -960,7 +1041,7 @@ const relatives = isOrderForOthers
                   {t('invoice.clear')}
                 </CButton>
                 &nbsp;
-                {state.paymentType == 1 && (
+                {state.payment_type == 1 && (
                   <CButton className="mr-20" type="button" onClick={() => setShowQR(true)} color="primary">
                     {t('invoice.view_qr')}
                   </CButton>

@@ -43,14 +43,14 @@ export default function CustomProductModal({ visible, setVisible, onAddProduct }
       aria-labelledby="CustomProductModalLabel"
     >
       <CModalHeader>
-        <CModalTitle id="CustomProductModalLabel">{t("LABELS.customize_product")}</CModalTitle>
+        <CModalTitle id="CustomProductModalLabel">Customize Product</CModalTitle>
       </CModalHeader>
       <CModalBody>
         <CForm>
           <CFormLabel>{t('LABELS.product_name')}</CFormLabel>
           <CFormInput
             type="text"
-            placeholder={t("LABELS.product_name")}
+            placeholder="Enter a Custom Product Name"
             value={customProduct.name}
             onChange={(e) => setCustomProduct({ ...customProduct, name: e.target.value })}
             className="mb-3"
@@ -58,7 +58,7 @@ export default function CustomProductModal({ visible, setVisible, onAddProduct }
           <CFormLabel>{t('LABELS.product_size')}</CFormLabel>
           <CFormInput
             type="text"
-            placeholder={t("LABELS.size")}
+            placeholder="Enter a product size(g/kg)"
             value={customProduct.size}
             onChange={(e) => setCustomProduct({ ...customProduct, size: e.target.value })}
             className="mb-3"
@@ -66,7 +66,7 @@ export default function CustomProductModal({ visible, setVisible, onAddProduct }
           <CFormLabel>{t('LABELS.product_price')}</CFormLabel>
           <CFormInput
             type="number"
-            placeholder={t("LABELS.price")}
+            placeholder="Product Price"
             value={customProduct.price}
             onChange={handlePriceChange}
             className="mb-3"
@@ -74,7 +74,7 @@ export default function CustomProductModal({ visible, setVisible, onAddProduct }
           <CFormLabel>{t('LABELS.quantity')}</CFormLabel>
           <CFormInput
             type="number"
-            placeholder={t("LABELS.quantity")}
+            placeholder="Product Quantity"
             value={customProduct.qty}
             onChange={handleQtyChange}
             className="mb-3"

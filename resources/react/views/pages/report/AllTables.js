@@ -9,7 +9,6 @@ function All_Tables({ selectedOption, salesData, expenseData, pnlData }) {
     console.log("P&L Data:", pnlData);
   }, [salesData, expenseData, pnlData]);
 
-  // ✅ Sales Table Columns
   const salesColumns = [
     { accessorKey: 'invoiceDate', header: 'Invoice Date' },
     { accessorKey: 'totalAmount', header: 'Total Amount', Cell: ({ cell }) => `₹${parseFloat(cell.getValue() || 0).toFixed(2)}` },
@@ -17,7 +16,7 @@ function All_Tables({ selectedOption, salesData, expenseData, pnlData }) {
     { accessorKey: 'balanceAmount', header: 'Balance Amount', Cell: ({ cell }) => `₹${parseFloat(cell.getValue() || 0).toFixed(2)}` },
   ];
 
-  // ✅ Expense Table Columns
+
   const expenseColumns = [
     { accessorKey: 'expense_date', header: 'Date' },
     { accessorKey: 'name', header: 'Details' },
@@ -26,7 +25,7 @@ function All_Tables({ selectedOption, salesData, expenseData, pnlData }) {
     { accessorKey: 'total_price', header: 'Total Cost', Cell: ({ cell }) => `₹${parseFloat(cell.getValue() || 0).toFixed(2)}` },
   ];
 
-  // ✅ Profit & Loss Table Columns
+  
   const pnlColumns = [
     { accessorKey: 'date', header: 'Date' },
     { accessorKey: 'totalSales', header: 'Total Sales', Cell: ({ cell }) => `₹${parseFloat(cell.getValue() || 0).toFixed(2)}` },
@@ -50,8 +49,7 @@ function All_Tables({ selectedOption, salesData, expenseData, pnlData }) {
       {selectedOption === '1' && (
         <MantineReactTable 
           columns={salesColumns} 
-          data={salesData?.data?.length ? salesData.data : []} 
-          enableFullScreenToggle={false} 
+          data={salesData?.data?.length ? salesData.data : []}  
           emptyContentMessage="No sales data available."
         />
       )}
@@ -59,7 +57,6 @@ function All_Tables({ selectedOption, salesData, expenseData, pnlData }) {
         <MantineReactTable 
           columns={expenseColumns} 
           data={expenseData?.data?.length ? expenseData.data : []} 
-          enableFullScreenToggle={false} 
           emptyContentMessage="No expense data available."
         />
       )}
@@ -67,7 +64,6 @@ function All_Tables({ selectedOption, salesData, expenseData, pnlData }) {
         <MantineReactTable 
           columns={pnlColumns} 
           data={pnlData?.data?.length ? pnlData.data : []} 
-          enableFullScreenToggle={false} 
           emptyContentMessage="No profit/loss data available."
         />
       )}
