@@ -133,12 +133,17 @@ const relatives = isOrderForOthers
     const value = event.target.value;
     setCustomerName({ name: value });
     setState((prevState) => ({ ...prevState, customerName: value }));
+  
     if (value) {
       debouncedSearchCustomer(value);
     } else {
+      // If user clears the field, reset the selected customer
+      setCustomerName({ name: '', mobile: '', address: '', id: null });
+      setState((prevState) => ({ ...prevState, customerId: null }));
       setSuggestions([]);
     }
   };
+  
 
   const onCustomerAdded = (customer) => {
     handleSuggestionClick(customer);
@@ -147,9 +152,17 @@ const relatives = isOrderForOthers
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    if (name === "paidAmount" && value < 0) return; // Prevent negative values
-    setState((prev) => ({ ...prev, [name]: value }));
+  
+    // Prevent negative values and ensure valid number input
+    if (name === "paidAmount" && value < 0) return;
+  
+    setState((prev) => ({
+      ...prev,
+      [name]: value === "" ? 0 : parseFloat(value) || 0, // Default to 0 if empty
+    }));
   };
+  
+  
 
   // Update totals on state change
   useEffect(() => {
@@ -427,78 +440,84 @@ const handleSubmit = async (e) => {
 
   const userData = JSON.parse(localStorage.getItem("userData"));
   const company_id = userData ? userData?.user.company_id : null;
-  const orderStatus = state.invoiceType === 1 ? 1 : 2; 
+  const orderStatus = state.invoiceType === 1 ? 1 : 2;
 
-  console.log("🚀 Form State Before Submission:", state);
+  console.log("Form State Before Submission:", state);
+
+  // Check if a customer is selected
+  if (!state.customerId) {
+    showToast('warning','Please select a customer or add a new customer');
+    return;
+  }
 
   const customProducts = state.items
-      .filter(item => item.product.toString().length > 10)
-      .map(item => ({
-          name: item.name || "Custom Product",  
-          size: typeof item.size === "string" ? item.size : "Custom Size",
-          price: item.price,  
-          qty: item.qty,  
-      }));
+    .filter(item => item.product.toString().length > 10)
+    .map(item => ({
+      name: item.name || "Custom Product",
+      size: typeof item.size === "string" ? item.size : "Custom Size",
+      price: item.price,
+      qty: item.qty,
+    }));
 
   const regularProducts = state.items
-      .filter(item => item.product.toString().length <= 10)
-      .map(item => ({
-          product_id: item.product,
-          product_size_id: typeof item.size === "number" ? item.size : null,
-          qty: item.qty,
-          price: item.price,
-      }));
+    .filter(item => item.product.toString().length <= 10)
+    .map(item => ({
+      product_id: item.product,
+      product_size_id: typeof item.size === "number" ? item.size : null,
+      qty: item.qty,
+      price: item.price,
+    }));
 
-  // 🛑 Prevent submission if no products exist
+  // Prevent submission if no products exist
   if (regularProducts.length === 0 && customProducts.length === 0) {
-      alert("You must add at least one product before submitting the order.");
-      return;
+    showToast('error','You must add at least one product before submitting the order.');
+    return;
   }
 
   const orderData = {
-      customer_id: state.customerId,
-      company_id: company_id,
-      total_amount: state.billedAmount,
-      paid_amount: state.paidAmount,
-      balance_amount: state.balanceAmount,
-      order_status: orderStatus,
-      discount: state.discount,
-      delivery_date: state.deliveryDate,
-      invoiceDate: state.invoiceDate || null,
-      order_type: state.invoiceType,
-      payment_type: state.payment_type,  // ✅ Added paymentType (0 = Cash, 1 = Online/UPI)
-      products: regularProducts,  
-      custom_products: customProducts.length > 0 ? customProducts : null,
+    customer_id: state.customerId,
+    company_id: company_id,
+    total_amount: state.billedAmount,
+    paid_amount: state.paidAmount,
+    balance_amount: state.balanceAmount,
+    order_status: orderStatus,
+    discount: state.discount,
+    delivery_date: state.deliveryDate,
+    invoiceDate: state.invoiceDate || null,
+    order_type: state.invoiceType,
+    payment_type: state.payment_type,
+    products: regularProducts,
+    custom_products: customProducts.length > 0 ? customProducts : null,
   };
 
-  console.log("📦 Sending Order Data:", JSON.stringify(orderData, null, 2));
+  console.log("Sending Order Data:", JSON.stringify(orderData, null, 2));
 
   try {
-      const response = await fetch('/api/orders', { 
-          method: 'POST',
-          headers: {
-              'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(orderData),
-      });
+    const response = await fetch('/api/orders', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(orderData),
+    });
 
-      console.log("🟡 Response Status:", response.status);
+    console.log("Response Status:", response.status);
 
-      if (!response.ok) {
-          throw new Error(`HTTP error! Status: ${response.status}`);
-      }
+    if (!response.ok) {
+      throw new Error(`HTTP error! Status: ${response.status}`);
+    }
 
-      const data = await response.json();
-      console.log("✅ Order created successfully:", data);
+    const data = await response.json();
+    console.log("Order created successfully:", data);
 
-      if (data.order && data.order.id) {
-          console.log("🔀 Redirecting to Invoice Page...");
-          navigate(`/invoice-details/${data.order.id}`);
-      } else {
-          console.error("❌ Order ID missing in response!");
-      }
+    if (data.order && data.order.id) {
+      console.log("Redirecting to Invoice Page...");
+      navigate(`/invoice-details/${data.order.id}`);
+    } else {
+      console.error("Order ID missing in response!");
+    }
   } catch (error) {
-      console.error("❌ Fetch Error:", error);
+    console.error("Fetch Error:", error);
   }
 };
 
@@ -805,8 +824,8 @@ const handleSubmit = async (e) => {
               <td>
                 <CFormInput
                   type="number"
-                  value={item.qty === 0 ? "" : item.qty} // Show blank when clicked
-                  placeholder="0" // Display 0 as a hint
+                  value={item.qty === 0 ? "" : item.qty} 
+                  placeholder="0"
                   onFocus={(e) => e.target.value === "0" && (e.target.value = "")} // Clear if it's 0
                   onBlur={(e) => e.target.value === "" && handleQtyChange(index, 0)} // Reset to 0 if left blank
                   onChange={(e) => handleQtyChange(index, parseInt(e.target.value, 10) || 0)}
@@ -983,19 +1002,22 @@ const handleSubmit = async (e) => {
                   </div>
                 </div>
                 <div className="col-sm-3">
-                  <div className="mb-3">
-                    <CFormLabel htmlFor="paidAmount">{t('invoice.paid_amount')} (Rs)</CFormLabel>
-                    <CFormInput
-                      min="0"
-                      type="number"
-                      id="paidAmount"
-                      placeholder=""
-                      name="paidAmount"
-                      value={state.paidAmount}
-                      onChange={handleChange}
-                    />
-                  </div>
+                <div className="mb-3">
+                  <CFormLabel htmlFor="paidAmount">{t('invoice.paid_amount')} (Rs)</CFormLabel>
+                  <CFormInput
+                    type="number"
+                    id="paidAmount"
+                    placeholder="0"
+                    name="paidAmount"
+                    value={state.paidAmount === 0 ? '' : state.paidAmount} // Blank when paidAmount is 0
+                    onChange={(e) => {
+                      const value = e.target.value === '' ? '' : Math.max(0, e.target.value); // Blank when empty, otherwise ensure it's 0 or greater
+                      handleChange({ target: { name: 'paidAmount', value } });
+                    }}
+                  />
                 </div>
+                </div>
+
                 <div className="col-sm-3">
                   <div className="mb-3">
                     <CFormLabel htmlFor="paidAmount">{t('invoice.balance_amount')} (Rs)</CFormLabel>

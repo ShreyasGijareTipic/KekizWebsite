@@ -1,11 +1,14 @@
 import React, { useState } from 'react';
 import { CButton, CModal, CModalBody, CModalFooter, CModalHeader, CModalTitle, CForm, CFormLabel, CFormInput } from '@coreui/react';
 import { useTranslation } from 'react-i18next';
+import { useToast } from './toast/ToastContext';
+
+
 
 export default function CustomProductModal({ visible, setVisible, onAddProduct }) {
   const { t } = useTranslation("global");
   const [customProduct, setCustomProduct] = useState({ name: '', size: '', price: 0, qty: 0, total: 0 });
-
+  const { showToast } = useToast();
   const handleAddProduct = () => {
     // Check for valid values (name, size, price, and quantity)
     if (customProduct.name && customProduct.size && customProduct.price > 0 && customProduct.qty > 0) {
@@ -13,27 +16,54 @@ export default function CustomProductModal({ visible, setVisible, onAddProduct }
       setCustomProduct({ name: '', size: '', price: 0, qty: 0, total: 0 });
       setVisible(false);
     } else {
-      alert(t('LABELS.fill_all_fields')); // Show alert if validation fails
+      showToast('danger','Please ensure all fields are filled before submitting.'); // Show alert if validation fails
     }
   };
 
   const handlePriceChange = (e) => {
-    const price = parseFloat(e.target.value);
+    let value = e.target.value;
+  
+    // Allow empty value for user input but store a valid number in state
+    if (value === "") {
+      setCustomProduct((prevState) => ({
+        ...prevState,
+        price: "",
+        total: (prevState.qty || 0) * 0, // Handle empty price
+      }));
+      return;
+    }
+  
+    const price = parseFloat(value) || 0; // Convert to float, fallback to 0
     setCustomProduct((prevState) => ({
       ...prevState,
       price: price,
-      total: price * prevState.qty, // Update total based on price and quantity
+      total: price * (prevState.qty || 0),
     }));
   };
-
+  
   const handleQtyChange = (e) => {
-    const qty = parseInt(e.target.value, 10);
+    let value = e.target.value;
+  
+    // Allow empty value for user input but store a valid number in state
+    if (value === "") {
+      setCustomProduct((prevState) => ({
+        ...prevState,
+        qty: "",
+        total: (prevState.price || 0) * 0, // Handle empty qty
+      }));
+      return;
+    }
+  
+    const qty = parseInt(value, 10) || 0; // Convert to integer, fallback to 0
     setCustomProduct((prevState) => ({
       ...prevState,
       qty: qty,
-      total: prevState.price * qty, // Update total based on price and quantity
+      total: (prevState.price || 0) * qty,
     }));
   };
+  
+  
+  
 
   return (
     <CModal
@@ -64,21 +94,24 @@ export default function CustomProductModal({ visible, setVisible, onAddProduct }
             className="mb-3"
           />
           <CFormLabel>{t('LABELS.product_price')}</CFormLabel>
-          <CFormInput
-            type="number"
-            placeholder="Product Price"
-            value={customProduct.price}
-            onChange={handlePriceChange}
-            className="mb-3"
-          />
-          <CFormLabel>{t('LABELS.quantity')}</CFormLabel>
-          <CFormInput
-            type="number"
-            placeholder="Product Quantity"
-            value={customProduct.qty}
-            onChange={handleQtyChange}
-            className="mb-3"
-          />
+            <CFormInput
+              type="number"
+              value={customProduct.price === 0 ? "" : customProduct.price} // Allow empty display
+              placeholder="0"
+              onChange={handlePriceChange}
+              className="mb-3"
+            />
+
+            <CFormLabel>{t('LABELS.quantity')}</CFormLabel>
+            <CFormInput
+              type="number"
+              value={customProduct.qty === 0 ? "" : customProduct.qty} // Allow empty display
+              placeholder="0"
+              onChange={handleQtyChange}
+              className="mb-3"
+            />
+
+
           <CFormLabel>{t('LABELS.total')}</CFormLabel>
           <CFormInput
             type="number"

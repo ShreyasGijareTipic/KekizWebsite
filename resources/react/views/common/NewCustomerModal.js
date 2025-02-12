@@ -124,18 +124,23 @@ export default function NewCustomerModal({ visible, hint, setVisible, onSuccess 
           <div className="mb-3">
             <CFormLabel>{t('LABELS.mobile_number')}</CFormLabel>
             <CFormInput
-              type="text"
+              type="tel" // Use 'tel' instead of 'number' for better mobile number handling
               name="mobile"
               placeholder={t('MSG.enter_mob_no_msg')}
               value={state.mobile}
-              onChange={handleChange}
-              minLength={10}
-              maxLength={10}
-              pattern="\d{10}"
+              onChange={(e) => {
+                const value = e.target.value.replace(/\D/g, ''); // Remove non-numeric characters
+                if (value.length <= 10) {
+                  handleChange({ target: { name: 'mobile', value } });
+                }
+              }}
+              maxLength={10} // Prevents input beyond 10 characters
+              pattern="\d{10}" // Ensures exactly 10 digits for form validation
               required
             />
             <div className="invalid-feedback">{t('MSG.mobile_number_is_required_msg')}</div>
           </div>
+
 
           {/* Birthdate */}
           <div className="mb-3">
