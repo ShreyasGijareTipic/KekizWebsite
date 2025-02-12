@@ -153,14 +153,20 @@ const relatives = isOrderForOthers
   const handleChange = (e) => {
     const { name, value } = e.target;
   
-    // Prevent negative values and ensure valid number input
+    // Handle date inputs correctly
+    if (name === "invoiceDate" || name === "deliveryDate") {
+      if (isNaN(Date.parse(value))) return; // Prevent setting an invalid date
+    }
+  
+    // Prevent negative values for paidAmount
     if (name === "paidAmount" && value < 0) return;
   
     setState((prev) => ({
       ...prev,
-      [name]: value === "" ? 0 : parseFloat(value) || 0, // Default to 0 if empty
+      [name]: name === "paidAmount" ? (value === "" ? 0 : parseFloat(value) || 0) : value, // Handle numbers properly
     }));
   };
+  
   
   
 
@@ -675,7 +681,6 @@ const handleSubmit = async (e) => {
                       name="invoiceDate"
                       value={state.invoiceDate}
                       onChange={handleChange}
-                      min={new Date().toISOString().split('T')[0]} 
                       required
                       feedbackInvalid={t('invoice.select_date')}
                     />
@@ -690,8 +695,8 @@ const handleSubmit = async (e) => {
                         id="deliveryDate"
                         placeholder={t('invoice.pune')}
                         name="deliveryDate"
-                        min={new Date().toISOString().split('T')[0]} 
                         value={state.deliveryDate}
+                        min={new Date().toISOString().split("T")[0]}
                         onChange={handleChange}
                         required={state.invoiceType == 2}
                         feedbackInvalid={t('invoice.select_date')}
